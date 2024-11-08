@@ -1,6 +1,6 @@
 import express from "express";
 
-import { get_answer } from "@/apis/question";
+import { get_answer } from "../apis/question";
 
 export const router = express.Router();
 

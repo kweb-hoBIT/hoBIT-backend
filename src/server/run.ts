@@ -1,6 +1,6 @@
 import express from "express";
 
-import { router } from "@/router";
+import { router } from "../router";
 
 const PORT = 4000;
 const API_V0 = "api/v0";

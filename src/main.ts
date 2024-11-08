@@ -1,9 +1,11 @@
 import { runServer } from "./server/run";
+import { createTable } from "../config/createTable";
 
-(async function main() {
-  console.log("api server");
+async function main() {
+  await createTable();
 
-  const p1 = await runServer();
+  console.log("Starting API server...");
+  await runServer();
+}
 
-  Promise.all([p1]);
-})();
+main().catch(console.error);
