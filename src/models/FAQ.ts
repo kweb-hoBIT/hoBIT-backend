@@ -4,43 +4,41 @@ import { User } from "./User";
 
 export type TFAQ = {
   id: number;
-  maincategoryKo: string;
-  maincategoryEn: string;
-  subcategoryKo: string;
-  subcategoryEn: string;
-  questionKo: string;
-  questionEn: string;
-  answerKo: object;
-  answerEn: object;
-  createdAt: Date;
-  createdBy: number | null;
-  updatedAt: Date;
-  updatedBy: number | null;
+  maincategory_ko: string;
+  maincategory_en: string;
+  subcategory_ko: string;
+  subcategory_en: string;
+  question_ko: string;
+  question_en: string;
+  answer_ko: string;
+  answer_en: string;
+  manager: string;
+  created_by: number | null;
+  updated_by: number | null;
 };
 
 export class FAQ extends Model<TFAQ> implements TFAQ {
   public id!: number;
-  public maincategoryKo!: string;
-  public maincategoryEn!: string;
-  public subcategoryKo!: string;
-  public subcategoryEn!: string;
-  public questionKo!: string;
-  public questionEn!: string;
-  public answerKo!: object;
-  public answerEn!: object;
-  public createdAt!: Date;
-  public createdBy!: number | null;
-  public updatedAt!: Date;
-  public updatedBy!: number | null;
+  public maincategory_ko!: string;
+  public maincategory_en!: string;
+  public subcategory_ko!: string;
+  public subcategory_en!: string;
+  public question_ko!: string;
+  public question_en!: string;
+  public answer_ko!: string;
+  public answer_en!: string;
+  public manager!: string;
+  public created_by!: number | null;
+  public updated_by!: number | null;
 
   static associate() {
     FAQ.belongsTo(User, {
-      foreignKey: "createdBy",
+      foreignKey: "created_by",
       as: "creator",
       onDelete: "SET NULL",
     });
     FAQ.belongsTo(User, {
-      foreignKey: "updatedBy",
+      foreignKey: "updated_by",
       as: "updater",
       onDelete: "SET NULL",
     });
@@ -54,51 +52,47 @@ FAQ.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    maincategoryKo: {
+    maincategory_ko: {
       type: DataTypes.STRING(45),
       allowNull: false,
     },
-    maincategoryEn: {
+    maincategory_en: {
       type: DataTypes.STRING(45),
       allowNull: false,
     },
-    subcategoryKo: {
+    subcategory_ko: {
       type: DataTypes.STRING(45),
       allowNull: false,
     },
-    subcategoryEn: {
+    subcategory_en: {
       type: DataTypes.STRING(45),
       allowNull: false,
     },
-    questionKo: {
+    question_ko: {
       type: DataTypes.STRING(300),
       allowNull: false,
     },
-    questionEn: {
+    question_en: {
       type: DataTypes.STRING(300),
       allowNull: false,
     },
-    answerKo: {
-      type: DataTypes.JSON,
+    answer_ko: {
+      type: DataTypes.STRING(1000),
       allowNull: false,
     },
-    answerEn: {
-      type: DataTypes.JSON,
+    answer_en: {
+      type: DataTypes.STRING(1000),
       allowNull: false,
     },
-    createdAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
+    manager: {
+      type: DataTypes.STRING(45),
+      allowNull: false,
     },
-    createdBy: {
+    created_by: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    updatedAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedBy: {
+    updated_by: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -107,7 +101,7 @@ FAQ.init(
     sequelize,
     modelName: "FAQ",
     tableName: "faqs",
-    timestamps: false,
+    timestamps: true,
     underscored: true,
   },
 );

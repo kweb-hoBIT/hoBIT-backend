@@ -7,20 +7,20 @@ export type TFaqLog = {
   id: number;
   user_id: number | null;
   faq_id: number | null;
-  prev_faq: any;
-  new_faq: any;
+  prev_faq: string;
+  new_faq: string;
   action_type: string;
-  createdAt: Date;
+  created_at?: Date;
 };
 
 export class FaqLog extends Model<TFaqLog> implements TFaqLog {
   public id!: number;
   public user_id!: number | null;
   public faq_id!: number | null;
-  public prev_faq!: any;
-  public new_faq!: any;
+  public prev_faq!: string;
+  public new_faq!: string;
   public action_type!: string;
-  public createdAt!: Date;
+  public created_at!: Date;
 
   static associate() {
     FaqLog.belongsTo(FAQ, {
@@ -52,27 +52,25 @@ FaqLog.init(
       allowNull: true,
     },
     prev_faq: {
-      type: DataTypes.JSON,
-      allowNull: true,
+      type: DataTypes.STRING(1000),
+      allowNull: false,
     },
     new_faq: {
-      type: DataTypes.JSON,
-      allowNull: true,
+      type: DataTypes.STRING(1000),
+      allowNull: false,
     },
     action_type: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
     },
   },
   {
     sequelize,
     modelName: "FaqLog",
     tableName: "faq_logs",
-    timestamps: false,
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: false,
     underscored: true,
   },
 );

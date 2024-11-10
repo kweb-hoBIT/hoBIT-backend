@@ -1,5 +1,3 @@
-// sequelize 함수 설정
-
 import { Sequelize } from "sequelize";
 import config from "config";
 
