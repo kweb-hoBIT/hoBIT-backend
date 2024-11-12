@@ -1,8 +1,11 @@
-import { RequestHandler } from "express";
-import { Pool } from "../../config/connectDB";
-import { TFaqLog } from "../models/FAQLog";
+import { updateFaqLogRate } from "../db_interface/rate";
+import { ErrorResponse, RateFaqRequest, RateFaqResponse } from "../types";
+import { Request, Response } from "express";
 
-export const rateFaq: RequestHandler = async (req, res) => {
+export const rateFaq = async (
+  req: Request<RateFaqRequest>,
+  res: Response<RateFaqResponse | ErrorResponse>,
+) => {
   const { faq_id, action } = req.body;
 
   if (!faq_id || !action) {
@@ -10,23 +13,14 @@ export const rateFaq: RequestHandler = async (req, res) => {
     return;
   }
 
-  const adjustedRate = action === "like" ? 1 : action === "dislike" ? -1 : 0;
-
   try {
-    const query = `
-      INSERT INTO faq_logs (faq_id, rate)
-      VALUES (?, ?)
-      ON DUPLICATE KEY UPDATE
-        rate = rate + VALUES(rate)
-    `;
+    await updateFaqLogRate(faq_id, 1);
 
-    await Pool.query(query, [faq_id, adjustedRate]);
-
-    res.json({ success: true, message: "FAQ 평가가 저장되었습니다." });
-    return; 
+    res.json({ success: true });
+    return;
   } catch (error: any) {
     console.error(error.message);
     res.status(500).json({ error: "FAQ 평가 저장에 실패했습니다." });
     return;
   }
-}
+};

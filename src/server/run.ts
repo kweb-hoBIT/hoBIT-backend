@@ -1,7 +1,8 @@
 import express from "express";
 
 import { router } from "../router/index";
-import { get_all_faqs, question } from "../apis/question";
+import { allFaqs, question } from "../apis/question";
+import { rateFaq } from "../apis/rate";
 
 const PORT = 4000;
 const API_V0 = "api/v0";
@@ -13,8 +14,9 @@ export async function runServer() {
     res.send({ status: "State" });
   });
 
-  app.get("/api/v0/all_faqs", get_all_faqs);
+  app.get("/api/v0/all_faqs", allFaqs);
   app.get("/api/v0/question", question);
+  app.post("/rate", rateFaq);
 
   app.use(API_V0, router);
 

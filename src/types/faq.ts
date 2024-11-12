@@ -1,17 +1,17 @@
 import { TFAQ } from "../models/FAQ";
 
-export type TQuestionRequest = {
+export type QuestionRequest = {
   question: string;
 };
 
-export type TQuestionResponse = {
+export type QuestionResponse = {
   question: string;
 };
 
-export type TGetAllFaqsResponse = {
+export type AllFaqsResponse = {
   faqs: TFAQ[];
 };
 
-export type TErrorResponse = {
+export type ErrorResponse = {
   error: string;
 };

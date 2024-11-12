@@ -1,10 +1,8 @@
-export interface RateRequestPayload {
+export interface RateFaqRequest {
   faq_id: number;
-  action: "like" | "dislike";
+  action: 1 | -1;
 }
 
-export interface RateResponsePayload {
+export interface RateFaqResponse {
   success: boolean;
-  message: string;
-  error?: string;
 }

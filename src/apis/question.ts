@@ -1,15 +1,13 @@
 import { Request, Response } from "express";
 import {
-  TErrorResponse,
-  TGetAllFaqsResponse,
-  TQuestionRequest,
-  TQuestionResponse,
+  ErrorResponse,
+  AllFaqsResponse,
+  QuestionRequest,
+  QuestionResponse,
 } from "../types/faq";
 import { fetchAllFaqs } from "../db_interface/faq";
 
-export async function get_all_faqs(
-  res: Response<TGetAllFaqsResponse | TErrorResponse>,
-) {
+export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
   try {
     const faqs = await fetchAllFaqs();
     res.json({ faqs });
@@ -19,8 +17,8 @@ export async function get_all_faqs(
 }
 
 export async function question(
-  req: Request<TQuestionRequest>,
-  res: Response<TQuestionResponse | TErrorResponse>,
+  req: Request<QuestionRequest>,
+  res: Response<QuestionResponse | ErrorResponse>,
 ) {
   const { question } = req.params;
 
@@ -30,7 +28,8 @@ export async function question(
     // 유사도 기반 질문 탐색 알고리즘 수행
 
     // res.send({ answer });
-  } catch (error) {
+  } catch (error: any) {
+    console.error(error.message);
     res.status(500).json({ error: "get_answer 함수 호출 실패" });
   }
 }
