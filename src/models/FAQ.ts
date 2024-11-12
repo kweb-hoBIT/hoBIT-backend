@@ -103,7 +103,7 @@ FAQ.init(
     tableName: "faqs",
     timestamps: true,
     underscored: true,
-  },
+  }
 );
 
 export default FAQ;
