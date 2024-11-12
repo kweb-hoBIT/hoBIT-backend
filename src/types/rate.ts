@@ -1,12 +1,10 @@
-export interface Rate {
-  questionId: string;
-  rate: number;
-}
-
 export interface RateRequestPayload {
-  rate: Rate;
+  faq_id: number;
+  action: "like" | "dislike";
 }
 
 export interface RateResponsePayload {
   success: boolean;
+  message: string;
+  error?: string;
 }

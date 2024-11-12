@@ -103,6 +103,7 @@ const createFaqLogTable = async () => {
       prev_faq VARCHAR(1000) NOT NULL,
       new_faq VARCHAR(1000) NOT NULL,
       action_type VARCHAR(255) NOT NULL,
+      rate INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL

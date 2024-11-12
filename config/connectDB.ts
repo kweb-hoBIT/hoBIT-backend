@@ -1,4 +1,4 @@
-import mysql from "mysql2/promise";
+import mysql, { Pool as MySQLPool } from "mysql2/promise";
 import config from "config";
 
 const dbHost = config.get<string>("dbHost");
@@ -7,7 +7,7 @@ const dbPassword = config.get<string>("dbPassword");
 const dbName = config.get<string>("dbName");
 
 // MySQL connection pool
-const Pool = mysql.createPool({
+const Pool: MySQLPool = mysql.createPool({
 	host: dbHost,
 	user: dbUser,
 	password: dbPassword,

@@ -6,6 +6,7 @@ export type TFaqLog = {
   new_faq: string;
   action_type: string;
   created_at?: Date;
+  rate?: number | null;
 };
 
 export default TFaqLog;
