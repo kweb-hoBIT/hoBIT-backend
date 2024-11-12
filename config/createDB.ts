@@ -6,17 +6,125 @@ const dbUser = config.get<string>("dbUser");
 const dbPassword = config.get<string>("dbPassword");
 const dbName = config.get<string>("dbName");
 
-export const createConnection = async () => {
+// 데이터베이스 연결
+const createConnection = async (database: string = dbName) => {
   return await mysql.createConnection({
     host: dbHost,
     user: dbUser,
     password: dbPassword,
+    database: database,
   });
 };
 
-export const createDB = async () => {
-  const connection = await createConnection();
+// 데이터베이스 생성 함수
+const createDB = async () => {
+  const connection = await mysql.createConnection({
+    host: dbHost,
+    user: dbUser,
+    password: dbPassword,
+  });
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
   console.log(`Database ${dbName} created or already exists.`);
   await connection.end();
 };
+
+// 테이블 생성 쿼리
+const createUserTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(45) NOT NULL,
+      password VARCHAR(100) NOT NULL,
+      username VARCHAR(45) NOT NULL,
+      phone_num VARCHAR(45) NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+  `;
+  await connection.query(query);
+  console.log("User table created or already exists.");
+  await connection.end();
+};
+
+const createFAQTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS faqs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      maincategory_ko VARCHAR(45) NOT NULL,
+      maincategory_en VARCHAR(45) NOT NULL,
+      subcategory_ko VARCHAR(45) NOT NULL,
+      subcategory_en VARCHAR(45) NOT NULL,
+      question_ko VARCHAR(300) NOT NULL,
+      question_en VARCHAR(300) NOT NULL,
+      answer_ko VARCHAR(1000) NOT NULL,
+      answer_en VARCHAR(1000) NOT NULL,
+      manager VARCHAR(45) NOT NULL,
+      created_by INT,
+      updated_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `;
+  await connection.query(query);
+  console.log("FAQ table created or already exists.");
+  await connection.end();
+};
+
+const createQuestionLogTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS question_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      faq_id INT,
+      user_question VARCHAR(300) NOT NULL,
+      language VARCHAR(45) NOT NULL,
+      feedback_score INT,
+      feedback VARCHAR(300),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL
+    );
+  `;
+  await connection.query(query);
+  console.log("QuestionLog table created or already exists.");
+  await connection.end();
+};
+
+const createFaqLogTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS faq_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT,
+      faq_id INT,
+      prev_faq VARCHAR(1000) NOT NULL,
+      new_faq VARCHAR(1000) NOT NULL,
+      action_type VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `;
+  await connection.query(query);
+  console.log("FaqLog table created or already exists.");
+  await connection.end();
+};
+
+// 테이블 생성 실행
+const createTables = async () => {
+  await createUserTable();
+  await createFAQTable();
+  await createQuestionLogTable();
+  await createFaqLogTable();
+};
+
+// 데이터베이스 및 테이블 생성
+const initializeDatabase = async () => {
+  await createDB();
+  await createTables();
+};
+
+export { initializeDatabase };

@@ -8,7 +8,6 @@ import {
 import { fetchAllFaqs } from "../db_interface/faq";
 
 export async function get_all_faqs(
-  _req: Request,
   res: Response<TGetAllFaqsResponse | TErrorResponse>,
 ) {
   try {

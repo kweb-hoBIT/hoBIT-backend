@@ -1,9 +1,11 @@
+import { initializeDatabase } from "../config/createDB";
 import { runServer } from "./server/run";
-import { createTable } from "../config/createTable";
+
+(async () => {
+  await initializeDatabase();
+})();
 
 async function main() {
-  await createTable();
-
   console.log("Starting API server...");
   await runServer();
 }
