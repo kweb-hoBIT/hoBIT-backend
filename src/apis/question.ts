@@ -1,42 +1,15 @@
 import { Request, Response } from "express";
-import FAQ, { TFAQ } from "../models/FAQ";
-import { TFaqLog } from "../models/FAQLog";
-
-type TFAQItem = {
-  id: number;
-  maincategory_ko: string;
-  maincategory_en: string;
-  subcategory_ko: string;
-  subcategory_en: string;
-  question_ko: string;
-  question_en: string;
-  answer_ko: string;
-  answer_en: string;
-  manager: string;
-  created_by: number | null;
-  updated_by: number | null;
-};
-
-async function fetchAllFaqs() {
-  try {
-    const faqs: TFAQItem[] = await FAQ.findAll({});
-    return faqs;
-  } catch (error) {
-    throw new Error("전체 FAQ를 불러오지 못했습니다.");
-  }
-}
-
-type TGetAllFaqsResponse = {
-  faqs: TFAQItem[];
-};
-
-type TErrorResponse = {
-  error: string;
-};
+import {
+  TErrorResponse,
+  TGetAllFaqsResponse,
+  TQuestionRequest,
+  TQuestionResponse,
+} from "../types/faq";
+import { fetchAllFaqs } from "../db_interface/faq";
 
 export async function get_all_faqs(
   _req: Request,
-  res: Response<TGetAllFaqsResponse | TErrorResponse>
+  res: Response<TGetAllFaqsResponse | TErrorResponse>,
 ) {
   try {
     const faqs = await fetchAllFaqs();
@@ -46,17 +19,9 @@ export async function get_all_faqs(
   }
 }
 
-type TQuestionParams = {
-  question: string;
-};
-
-type TGetAnwerResponse = {
-  answer: TFAQItem;
-};
-
-export async function get_answer(
-  req: Request<TQuestionParams>,
-  res: Response<TGetAnwerResponse | TErrorResponse>
+export async function question(
+  req: Request<TQuestionRequest>,
+  res: Response<TQuestionResponse | TErrorResponse>,
 ) {
   const { question } = req.params;
 

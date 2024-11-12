@@ -1,8 +1,8 @@
 import express from "express";
 
-import { get_all_faqs, get_answer } from "../apis/question";
+import { question, get_all_faqs } from "../apis/question";
 
 export const router = express.Router();
 
 router.get("/all_faqs", get_all_faqs);
-router.get("/question", get_answer);
+router.get("/question", question);
