@@ -5,6 +5,7 @@ const dbHost = config.get<string>("dbHost");
 const dbUser = config.get<string>("dbUser");
 const dbPassword = config.get<string>("dbPassword");
 const dbName = config.get<string>("dbName");
+const timezone = config.get<string>("timezone");
 
 // 데이터베이스 연결
 const createConnection = async (database: string = dbName) => {
@@ -13,6 +14,7 @@ const createConnection = async (database: string = dbName) => {
     user: dbUser,
     password: dbPassword,
     database: database,
+    timezone: timezone,
   });
 };
 
@@ -103,7 +105,6 @@ const createFaqLogTable = async () => {
       prev_faq VARCHAR(1000) NOT NULL,
       new_faq VARCHAR(1000) NOT NULL,
       action_type VARCHAR(255) NOT NULL,
-      rate INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL

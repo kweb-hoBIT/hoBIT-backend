@@ -6,13 +6,20 @@ import {
   QuestionResponse,
 } from "../types/faq";
 import { fetchAllFaqs } from "../db_interface/faq";
+import { PoolConnection } from "mysql2/promise";
+import { Pool } from "../../config/connectDB";
 
 export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
+  const conn: PoolConnection = await Pool.getConnection();
+
   try {
-    const faqs = await fetchAllFaqs();
+    const faqs = await fetchAllFaqs(conn);
     res.json({ faqs });
-  } catch (error) {
+  } catch (error: any) {
+    console.error(error.message);
     res.status(500).json({ error: "get_all_faqs 함수 호출 실패" });
+  } finally {
+    conn.release();
   }
 }
 
@@ -21,9 +28,10 @@ export async function question(
   res: Response<QuestionResponse | ErrorResponse>,
 ) {
   const { question } = req.params;
+  const conn: PoolConnection = await Pool.getConnection();
 
   try {
-    const faqs = await fetchAllFaqs();
+    const faqs = await fetchAllFaqs(conn);
 
     // 유사도 기반 질문 탐색 알고리즘 수행
 
@@ -31,5 +39,7 @@ export async function question(
   } catch (error: any) {
     console.error(error.message);
     res.status(500).json({ error: "get_answer 함수 호출 실패" });
+  } finally {
+    conn.release();
   }
 }

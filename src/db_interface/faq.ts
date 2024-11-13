@@ -1,10 +1,7 @@
-import { Pool } from "../../config/connectDB";
 import { PoolConnection, RowDataPacket } from "mysql2/promise";
 import TFAQ from "../models/FAQ";
 
-export async function fetchAllFaqs() {
-  const conn: PoolConnection = await Pool.getConnection();
-
+export async function fetchAllFaqs(conn: PoolConnection) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
@@ -31,7 +28,5 @@ SELECT * FROM faqs;
   } catch (error: any) {
     console.error(error.message);
     throw new Error("전체 FAQ를 불러오지 못했습니다.");
-  } finally {
-    conn.release();
   }
 }

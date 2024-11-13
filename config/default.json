@@ -1,4 +1,5 @@
 {
+  "timezone": "+09:00",
   "dbHost": "127.0.0.1",
   "dbUser": "root",
   "dbPassword": "1234",
