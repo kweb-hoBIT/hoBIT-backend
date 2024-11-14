@@ -6,5 +6,5 @@ import { rateFaq } from '../apis/rate';
 export const router = express.Router();
 
 router.get('/all_faqs', allFaqs);
-router.get('/question', question);
+router.post('/question', question);
 router.post('/rate', rateFaq);

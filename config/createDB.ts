@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import config from 'config';
+import { insertFAQs } from './insertFAQs';
 
 const dbHost = config.get<string>('dbHost');
 const dbUser = config.get<string>('dbUser');
@@ -8,7 +9,7 @@ const dbName = config.get<string>('dbName');
 const timezone = config.get<string>('timezone');
 
 // 데이터베이스 연결
-const createConnection = async (database: string = dbName) => {
+export const createConnection = async (database: string = dbName) => {
   return await mysql.createConnection({
     host: dbHost,
     user: dbUser,
@@ -18,15 +19,15 @@ const createConnection = async (database: string = dbName) => {
   });
 };
 
-// 데이터베이스 생성 함수
 const createDB = async () => {
   const connection = await mysql.createConnection({
     host: dbHost,
     user: dbUser,
     password: dbPassword,
   });
+
+  await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-  console.log(`Database ${dbName} created or already exists.`);
   await connection.end();
 };
 
@@ -60,9 +61,9 @@ const createFAQTable = async () => {
       subcategory_en VARCHAR(45) NOT NULL,
       question_ko VARCHAR(300) NOT NULL,
       question_en VARCHAR(300) NOT NULL,
-      answer_ko VARCHAR(1000) NOT NULL,
-      answer_en VARCHAR(1000) NOT NULL,
-      manager VARCHAR(45) NOT NULL,
+      answer_ko VARCHAR(3000) NOT NULL,
+      answer_en VARCHAR(3000) NOT NULL,
+      manager VARCHAR(300) NOT NULL,
       created_by INT,
       updated_by INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -129,4 +130,9 @@ const initializeDatabase = async () => {
   await createTables();
 };
 
-export { initializeDatabase };
+const populateDatabase = async () => {
+  await initializeDatabase();
+  await insertFAQs();
+};
+
+export { populateDatabase };

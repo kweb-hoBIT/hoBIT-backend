@@ -1,8 +1,8 @@
-import { initializeDatabase } from '../config/createDB';
+import { populateDatabase } from '../config/createDB';
 import { runServer } from './server/run';
 
 (async () => {
-  await initializeDatabase();
+  await populateDatabase();
 })();
 
 async function main() {
