@@ -1,12 +1,12 @@
-import { PoolConnection, RowDataPacket } from "mysql2/promise";
-import TFAQ from "../models/FAQ";
+import { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import TFAQ from '../models/FAQ';
 
 export async function fetchAllFaqs(conn: PoolConnection) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
 SELECT * FROM faqs;
-	`,
+	`
     );
 
     const faqs: TFAQ[] = rows.map((row) => ({
@@ -27,6 +27,6 @@ SELECT * FROM faqs;
     return faqs;
   } catch (error: any) {
     console.error(error.message);
-    throw new Error("전체 FAQ를 불러오지 못했습니다.");
+    throw new Error('전체 FAQ를 불러오지 못했습니다.');
   }
 }

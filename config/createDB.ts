@@ -1,11 +1,11 @@
-import mysql from "mysql2/promise";
-import config from "config";
+import mysql from 'mysql2/promise';
+import config from 'config';
 
-const dbHost = config.get<string>("dbHost");
-const dbUser = config.get<string>("dbUser");
-const dbPassword = config.get<string>("dbPassword");
-const dbName = config.get<string>("dbName");
-const timezone = config.get<string>("timezone");
+const dbHost = config.get<string>('dbHost');
+const dbUser = config.get<string>('dbUser');
+const dbPassword = config.get<string>('dbPassword');
+const dbName = config.get<string>('dbName');
+const timezone = config.get<string>('timezone');
 
 // 데이터베이스 연결
 const createConnection = async (database: string = dbName) => {
@@ -45,7 +45,7 @@ const createUserTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log("User table created or already exists.");
+  console.log('User table created or already exists.');
   await connection.end();
 };
 
@@ -72,7 +72,7 @@ const createFAQTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log("FAQ table created or already exists.");
+  console.log('FAQ table created or already exists.');
   await connection.end();
 };
 
@@ -91,7 +91,7 @@ const createQuestionLogTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log("QuestionLog table created or already exists.");
+  console.log('QuestionLog table created or already exists.');
   await connection.end();
 };
 
@@ -111,7 +111,7 @@ const createFaqLogTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log("FaqLog table created or already exists.");
+  console.log('FaqLog table created or already exists.');
   await connection.end();
 };
 
