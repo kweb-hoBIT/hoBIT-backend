@@ -3,7 +3,7 @@ import TQuestionLog from '../models/QuestionLog';
 
 export async function insertQuestionLog(
   conn: PoolConnection,
-  log: Partial<TQuestionLog>
+  log: Omit<TQuestionLog, 'id' | 'feedback_score' | 'feedback' | 'created_at'>
 ) {
   try {
     await conn.query(
@@ -11,13 +11,7 @@ export async function insertQuestionLog(
 INSERT INTO question_logs (faq_id, user_question, language, feedback_score, feedback)
 VALUES (?, ?, ?, ?, ?);
       `,
-      [
-        log.faq_id,
-        log.user_question,
-        log.language,
-        log.feedback_score,
-        log.feedback,
-      ]
+      [log.faq_id, log.user_question, log.language, null, null]
     );
     console.log('Question 로그가 성공적으로 등록되었습니다.');
   } catch (error: any) {

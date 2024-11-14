@@ -42,7 +42,7 @@ export async function question(
       message: question,
     };
 
-    // TODO: cache same questions
+    // TODO: 같은 질문은 캐싱해서 답변
     const resp = await axios.post(envs.HOBIT_NLU_ENDPOINT!, nluParams, {
       headers: {
         'Content-Type': 'application/json',
@@ -51,13 +51,14 @@ export async function question(
 
     const nlpResp: NluResponse = resp.data;
 
-    const questionLog: TQuestionLog = {
-      id: 1,
+    // TODO: faq_id 난수 생성
+    const questionLog: Omit<
+      TQuestionLog,
+      'id' | 'feedback_score' | 'feedback' | 'created_at'
+    > = {
       faq_id: 1,
       user_question: question,
       language: isEnglish(question) ? 'EN' : 'KO',
-      feedback_score: null,
-      feedback: null,
     };
 
     await insertQuestionLog(conn, questionLog);
