@@ -4,18 +4,11 @@ import {
   AllFaqsResponse,
   QuestionRequest,
   QuestionResponse,
-<<<<<<< HEAD
 } from "../types/faq";
 import { fetchAllFaqs } from "../db_interface/faq";
 import { PoolConnection } from "mysql2/promise";
 import { Pool } from "../../config/connectDB";
 import { insertFaqLog } from "../db_interface/faqLog";
-=======
-} from '../types/faq';
-import { fetchAllFaqs } from '../db_interface/faq';
-import { PoolConnection } from 'mysql2/promise';
-import { Pool } from '../../config/connectDB';
->>>>>>> d3140696aeab225859ffd78fc2d30832c3344ee0
 
 export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
   const conn: PoolConnection = await Pool.getConnection();
