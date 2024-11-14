@@ -1,13 +1,13 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 import {
   ErrorResponse,
   AllFaqsResponse,
   QuestionRequest,
   QuestionResponse,
-} from "../types/faq";
-import { fetchAllFaqs } from "../db_interface/faq";
-import { PoolConnection } from "mysql2/promise";
-import { Pool } from "../../config/connectDB";
+} from '../types/faq';
+import { fetchAllFaqs } from '../db_interface/faq';
+import { PoolConnection } from 'mysql2/promise';
+import { Pool } from '../../config/connectDB';
 
 export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
   const conn: PoolConnection = await Pool.getConnection();
@@ -17,7 +17,7 @@ export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
     res.json({ faqs });
   } catch (error: any) {
     console.error(error.message);
-    res.status(500).json({ error: "get_all_faqs 함수 호출 실패" });
+    res.status(500).json({ error: 'get_all_faqs 함수 호출 실패' });
   } finally {
     conn.release();
   }
@@ -25,7 +25,7 @@ export async function allFaqs(res: Response<AllFaqsResponse | ErrorResponse>) {
 
 export async function question(
   req: Request<QuestionRequest>,
-  res: Response<QuestionResponse | ErrorResponse>,
+  res: Response<QuestionResponse | ErrorResponse>
 ) {
   const { question } = req.params;
   const conn: PoolConnection = await Pool.getConnection();
@@ -38,7 +38,7 @@ export async function question(
     // res.send({ answer });
   } catch (error: any) {
     console.error(error.message);
-    res.status(500).json({ error: "get_answer 함수 호출 실패" });
+    res.status(500).json({ error: 'get_answer 함수 호출 실패' });
   } finally {
     conn.release();
   }

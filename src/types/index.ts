@@ -1,4 +1,4 @@
-export * from "./rate";
+export * from './rate';
 
 export type ErrorResponse = {
   error: string;

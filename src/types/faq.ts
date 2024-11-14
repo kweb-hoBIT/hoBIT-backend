@@ -1,4 +1,4 @@
-import { TFAQ } from "../models/FAQ";
+import { TFAQ } from '../models/FAQ';
 
 export type QuestionRequest = {
   question: string;
