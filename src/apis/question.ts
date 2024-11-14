@@ -1,9 +1,9 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
 import axios from 'axios';
 
 import { envs } from '../envs';
-import { ErrorResponse, AllFaqsResponse } from '../types/faq';
+import { ErrorResponse } from '../types/faq';
 import { fetchAllFaqs } from '../db_interface/faq';
 import { Pool } from '../../config/connectDB';
 import { NluRequest, NluResponse } from '../types/nlu';
@@ -13,8 +13,9 @@ import { QuestionRequest, QuestionResponse } from '../types/question';
 import { insertQuestionLog } from '../db_interface/questionLog';
 
 export async function allFaqs(
-  _req: Request<QuestionRequest>,
-  res: Response<AllFaqsResponse | ErrorResponse>
+  _req: Request,
+  res: Response,
+  _next: NextFunction
 ) {
   const conn: PoolConnection = await Pool.getConnection();
 
@@ -23,7 +24,7 @@ export async function allFaqs(
     res.json({ faqs });
   } catch (error: any) {
     console.error(error.message);
-    res.status(500).json({ error: 'get_all_faqs 함수 호출 실패' });
+    throw new Error('get_all_faqs 함수 호출 실패');
   } finally {
     conn.release();
   }
