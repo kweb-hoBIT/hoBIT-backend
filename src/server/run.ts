@@ -12,6 +12,7 @@ export async function runServer() {
     res.send({ status: 'State' });
   });
 
+  app.use(express.json());
   app.use(API_V0, router);
 
   app.listen(PORT, () => {

@@ -33,7 +33,6 @@ const insertFAQs = async () => {
     await conn.execute(query, values);
   }
 
-  console.log('FAQs insert succesful');
   await conn.end();
 };
 
