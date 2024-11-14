@@ -46,7 +46,6 @@ const createUserTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log('User table created or already exists.');
   await connection.end();
 };
 
@@ -73,7 +72,6 @@ const createFAQTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log('FAQ table created or already exists.');
   await connection.end();
 };
 
@@ -92,7 +90,6 @@ const createQuestionLogTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log('QuestionLog table created or already exists.');
   await connection.end();
 };
 
@@ -112,7 +109,6 @@ const createFaqLogTable = async () => {
     );
   `;
   await connection.query(query);
-  console.log('FaqLog table created or already exists.');
   await connection.end();
 };
 
