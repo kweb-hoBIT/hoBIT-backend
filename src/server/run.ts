@@ -18,9 +18,8 @@ export async function runServer() {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   app.use(express.json());
-  app.use(errorHandler);
-
   app.use(API_V0, router);
+  app.use(errorHandler);
 
   app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);

@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { createFrontError, createDevError } from '../types/error';
 
-
 // Express 커스텀 에러 핸들러
 function errorHandler(
   err: any,
@@ -9,6 +8,9 @@ function errorHandler(
   res: Response,
   next: NextFunction
 ) {
+  console.log('Error Handler Triggered:', err); // 디버깅 로그 추가
+  console.log('Headers Sent:', res.headersSent); // 헤더 상태 확인
+
   const statusCode = err.statusCode || 500;
   const serverMessage = err.message || 'Internal Server Error.';
 
