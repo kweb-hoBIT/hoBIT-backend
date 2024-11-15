@@ -3,36 +3,17 @@ import { PoolConnection } from 'mysql2/promise';
 import axios from 'axios';
 
 import { envs } from '../envs';
-import { fetchAllFaqs } from '../db_interface';
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import { isEnglish } from '../lib/lang_tools';
 import { insertQuestionLog } from '../db_interface';
 import {
-  AllFaqsResponse,
   ErrorResponse,
   NluRequest,
   NluResponse,
   QuestionRequest,
   QuestionResponse,
 } from '../types';
-
-export async function allFaqs(
-  _req: Request<QuestionRequest>,
-  res: Response<AllFaqsResponse | ErrorResponse>
-) {
-  const conn: PoolConnection = await Pool.getConnection();
-
-  try {
-    const faqs = await fetchAllFaqs(conn);
-    res.json({ faqs });
-  } catch (error: any) {
-    console.error(error.message);
-    res.status(500).json({ error: 'get_all_faqs 함수 호출 실패' });
-  } finally {
-    conn.release();
-  }
-}
 
 export async function question(
   req: Request<{}, {}, QuestionRequest>,
