@@ -1,5 +1,7 @@
 import express from 'express';
+import swaggerUi from 'swagger-ui-express';
 
+import { swaggerSpec } from '../../swaggerConfig';
 import { router } from '../router/index';
 
 const PORT = 4000;
@@ -11,6 +13,8 @@ export async function runServer() {
   app.get('/', (_req, res) => {
     res.send({ status: 'State' });
   });
+
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   app.use(express.json());
   app.use(API_V0, router);
