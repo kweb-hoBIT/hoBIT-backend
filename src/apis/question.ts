@@ -71,7 +71,13 @@ export async function question(
       language: isEnglish(question) ? 'EN' : 'KO',
     };
 
-    res.json({ answer: nlpResp[0].text });
+    res
+      .json(
+        nlpResp && nlpResp[0]
+          ? { answer: nlpResp[0].text }
+          : { error: 'NLU 서버 요청 실패' }
+      )
+      .status(nlpResp && nlpResp[0] ? 200 : 500);
 
     await insertQuestionLog(conn, questionLog);
   } catch (error: any) {
