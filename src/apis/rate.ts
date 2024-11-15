@@ -2,7 +2,12 @@ import { PoolConnection } from 'mysql2/promise';
 import { Request, Response } from 'express';
 
 import { updateFaqLogRate } from '../db_interface';
-import { ErrorResponse, RateFaqRequest, RateFaqResponse } from '../types';
+import {
+  ErrorResponse,
+  RateFaqRequest,
+  RateFaqResponse,
+  ValidationError,
+} from '../types';
 import { Pool } from '../../config/connectDB';
 
 export const rateFaq = async (
@@ -11,7 +16,7 @@ export const rateFaq = async (
 ) => {
   const { faq_id, rate } = req.body;
   if (!faq_id || !rate) {
-    throw new Error('faq_id와 action은 필수 값입니다.');
+    throw new ValidationError('faq_id와 action은 필수 값입니다.');
   }
 
   const conn: PoolConnection = await Pool.getConnection();

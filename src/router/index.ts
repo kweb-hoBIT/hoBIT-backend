@@ -3,7 +3,7 @@ import express from 'express';
 import { question } from '../apis/question';
 import { rateFaq } from '../apis/rate';
 import { allFaqs } from '../apis/faq';
-import { promiseHandler } from '../middleware/error_handler';
+import { promiseHandler } from '../middleware/promise_handler';
 
 export const router = express.Router();
 

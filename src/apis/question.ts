@@ -14,7 +14,7 @@ import {
   QuestionResponse,
   ValidationError,
 } from '../types';
-import { fetchNlu } from '../nlu/api';
+import { fetchNlu } from '../internal/api';
 
 export const question = async (
   req: Request<{}, {}, QuestionRequest>,

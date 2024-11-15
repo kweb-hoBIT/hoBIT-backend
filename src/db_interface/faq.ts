@@ -28,7 +28,6 @@ SELECT * FROM faqs;
 
     return faqs;
   } catch (error: any) {
-    console.error(error.message);
     throw new DatabaseError('전체 FAQ를 불러오지 못했습니다.');
   }
 }

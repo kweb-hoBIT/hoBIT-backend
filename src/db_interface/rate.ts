@@ -23,7 +23,6 @@ WHERE faq_id = ?
     return faq_id;
   } catch (error: any) {
     await conn.rollback();
-    console.error(error.message);
     throw new DatabaseError(
       'Question Log 피드백 점수 업데이트 중 오류가 발생했습니다.'
     );

@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
 
-import { AllFaqsResponse, ErrorResponse, QuestionRequest } from '../types';
+import { AllFaqsResponse, ErrorResponse } from '../types';
 import { Pool } from '../../config/connectDB';
 import { fetchAllFaqs } from '../db_interface';
 
 export const allFaqs = async (
-  _req: Request<QuestionRequest>,
+  _req: Request,
   res: Response<AllFaqsResponse | ErrorResponse>
 ) => {
   const conn: PoolConnection = await Pool.getConnection();
