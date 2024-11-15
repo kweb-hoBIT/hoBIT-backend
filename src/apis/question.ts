@@ -3,14 +3,19 @@ import { PoolConnection } from 'mysql2/promise';
 import axios from 'axios';
 
 import { envs } from '../envs';
-import { ErrorResponse, AllFaqsResponse } from '../types/faq';
-import { fetchAllFaqs } from '../db_interface/faq';
+import { fetchAllFaqs } from '../db_interface';
 import { Pool } from '../../config/connectDB';
-import { NluRequest, NluResponse } from '../types/nlu';
 import TQuestionLog from '../models/QuestionLog';
 import { isEnglish } from '../lib/lang_tools';
-import { QuestionRequest, QuestionResponse } from '../types/question';
-import { insertQuestionLog } from '../db_interface/questionLog';
+import { insertQuestionLog } from '../db_interface';
+import {
+  AllFaqsResponse,
+  ErrorResponse,
+  NluRequest,
+  NluResponse,
+  QuestionRequest,
+  QuestionResponse,
+} from '../types';
 
 export async function allFaqs(
   _req: Request<QuestionRequest>,
@@ -34,6 +39,11 @@ export async function question(
   res: Response<QuestionResponse | ErrorResponse>
 ) {
   const { question } = req.body;
+  if (!question) {
+    res.status(400).json({ error: 'question은 필수값' });
+    return;
+  }
+
   const conn: PoolConnection = await Pool.getConnection();
 
   try {
@@ -42,7 +52,6 @@ export async function question(
       message: question,
     };
 
-    // TODO: 같은 질문은 캐싱해서 답변
     const resp = await axios.post(envs.HOBIT_NLU_ENDPOINT!, nluParams, {
       headers: {
         'Content-Type': 'application/json',
@@ -52,6 +61,7 @@ export async function question(
     const nlpResp: NluResponse = resp.data;
 
     // TODO: faq_id 난수 생성
+    // faq_XXX 형태로
     const questionLog: Omit<
       TQuestionLog,
       'id' | 'feedback_score' | 'feedback' | 'created_at'
@@ -61,9 +71,9 @@ export async function question(
       language: isEnglish(question) ? 'EN' : 'KO',
     };
 
-    await insertQuestionLog(conn, questionLog);
-
     res.json({ answer: nlpResp[0].text });
+
+    await insertQuestionLog(conn, questionLog);
   } catch (error: any) {
     console.log(error.message);
     res.status(500).json({ error: 'get_answer 함수 호출 실패' });
