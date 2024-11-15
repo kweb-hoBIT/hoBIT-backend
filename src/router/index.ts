@@ -3,6 +3,7 @@ import express from 'express';
 import { question } from '../apis/question';
 import { rateFaq } from '../apis/rate';
 import { allFaqs } from '../apis/faq';
+import { promiseHandler } from '../middleware/error_handler';
 
 export const router = express.Router();
 
@@ -37,7 +38,7 @@ export const router = express.Router();
  *       500:
  *         description: Error fetching FAQs
  */
-router.get('/all_faqs', allFaqs);
+router.get('/all_faqs', promiseHandler(allFaqs));
 
 /**
  * @swagger
@@ -70,7 +71,7 @@ router.get('/all_faqs', allFaqs);
  *       500:
  *         description: Error processing the question
  */
-router.post('/question', question);
+router.post('/question', promiseHandler(question));
 
 /**
  * @swagger

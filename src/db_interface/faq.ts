@@ -1,4 +1,6 @@
 import { PoolConnection, RowDataPacket } from 'mysql2/promise';
+
+import { DatabaseError } from '../types';
 import TFAQ from '../models/FAQ';
 
 export async function fetchAllFaqs(conn: PoolConnection) {
@@ -27,6 +29,6 @@ SELECT * FROM faqs;
     return faqs;
   } catch (error: any) {
     console.error(error.message);
-    throw new Error('전체 FAQ를 불러오지 못했습니다.');
+    throw new DatabaseError('전체 FAQ를 불러오지 못했습니다.');
   }
 }
