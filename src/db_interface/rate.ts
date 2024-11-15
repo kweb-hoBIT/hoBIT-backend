@@ -1,5 +1,7 @@
 import { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
+import { DatabaseError } from '../types';
+
 export async function updateFaqLogRate(
   conn: PoolConnection,
   faq_id: number,
@@ -22,7 +24,7 @@ WHERE faq_id = ?
   } catch (error: any) {
     await conn.rollback();
     console.error(error.message);
-    throw new Error(
+    throw new DatabaseError(
       'Question Log 피드백 점수 업데이트 중 오류가 발생했습니다.'
     );
   } finally {

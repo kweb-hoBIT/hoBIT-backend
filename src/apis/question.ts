@@ -7,6 +7,7 @@ import { isEnglish } from '../lib/lang_tools';
 import { insertQuestionLog } from '../db_interface';
 import {
   ErrorResponse,
+  NluError,
   NluRequest,
   NluResponse,
   QuestionRequest,
@@ -37,6 +38,12 @@ export const question = async (
 
     // TODO: faq_id 난수 생성
     // faq_XXX 형태로
+    if (!nlpResp || !nlpResp[0]) {
+      throw new NluError('NLU 서버 요청 실패');
+    }
+
+    res.status(200).json({ answer: nlpResp[0].text });
+
     const questionLog: Omit<
       TQuestionLog,
       'id' | 'feedback_score' | 'feedback' | 'created_at'
@@ -45,12 +52,6 @@ export const question = async (
       user_question: question,
       language: isEnglish(question) ? 'EN' : 'KO',
     };
-
-    if (!nlpResp || !nlpResp[0]) {
-      throw new Error('NLU 서버 요청 실패');
-    }
-
-    res.status(200).json({ answer: nlpResp[0].text });
 
     await insertQuestionLog(conn, questionLog);
   } finally {

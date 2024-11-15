@@ -19,10 +19,13 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
-  //console.error(err.stack);
+  if (res.headersSent) return;
+
+  console.error(err.message);
   if (err instanceof CustomError) {
     console.error(err.statusCode);
     res.status(err.statusCode).send(err.message);
+  } else {
+    res.status(400).send(err.message);
   }
-  res.status(400).send(err.message);
 };

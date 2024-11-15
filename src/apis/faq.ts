@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
 
 import { AllFaqsResponse, ErrorResponse, QuestionRequest } from '../types';
@@ -7,8 +7,7 @@ import { fetchAllFaqs } from '../db_interface';
 
 export const allFaqs = async (
   _req: Request<QuestionRequest>,
-  res: Response<AllFaqsResponse | ErrorResponse>,
-  _next: NextFunction
+  res: Response<AllFaqsResponse | ErrorResponse>
 ) => {
   const conn: PoolConnection = await Pool.getConnection();
 

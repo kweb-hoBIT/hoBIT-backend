@@ -1,4 +1,5 @@
 import { PoolConnection } from 'mysql2/promise';
+
 import TQuestionLog from '../models/QuestionLog';
 import { DatabaseError } from '../types';
 
