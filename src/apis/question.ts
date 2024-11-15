@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
-import axios from 'axios';
 
-import { envs } from '../envs';
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import { isEnglish } from '../lib/lang_tools';
@@ -13,16 +11,17 @@ import {
   NluResponse,
   QuestionRequest,
   QuestionResponse,
+  ValidationError,
 } from '../types';
+import { fetchNlu } from '../nlu/api';
 
-export async function question(
+export const question = async (
   req: Request<{}, {}, QuestionRequest>,
   res: Response<QuestionResponse | ErrorResponse>
-) {
+) => {
   const { question } = req.body;
   if (!question) {
-    res.status(400).json({ error: 'question은 필수값' });
-    return;
+    throw new ValidationError("invalid parameter, 'question' required");
   }
 
   const conn: PoolConnection = await Pool.getConnection();
@@ -33,12 +32,7 @@ export async function question(
       message: question,
     };
 
-    const resp = await axios.post(envs.HOBIT_NLU_ENDPOINT!, nluParams, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
+    const resp = await fetchNlu(nluParams);
     const nlpResp: NluResponse = resp.data;
 
     // TODO: faq_id 난수 생성
@@ -52,19 +46,14 @@ export async function question(
       language: isEnglish(question) ? 'EN' : 'KO',
     };
 
-    res
-      .json(
-        nlpResp && nlpResp[0]
-          ? { answer: nlpResp[0].text }
-          : { error: 'NLU 서버 요청 실패' }
-      )
-      .status(nlpResp && nlpResp[0] ? 200 : 500);
+    if (!nlpResp || !nlpResp[0]) {
+      throw new Error('NLU 서버 요청 실패');
+    }
+
+    res.status(200).json({ answer: nlpResp[0].text });
 
     await insertQuestionLog(conn, questionLog);
-  } catch (error: any) {
-    console.log(error.message);
-    res.status(500).json({ error: 'get_answer 함수 호출 실패' });
   } finally {
     conn.release();
   }
-}
+};

@@ -3,7 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import { swaggerSpec } from '../../swaggerConfig';
 import { router } from '../router/index';
-import errorHandler from '../middlewares/error_handler';
+import { errorHandler } from '../middleware/error_handler';
 
 const PORT = 4000;
 const API_V0 = '/api/v0';

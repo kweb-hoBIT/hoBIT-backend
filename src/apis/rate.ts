@@ -11,8 +11,7 @@ export const rateFaq = async (
 ) => {
   const { faq_id, rate } = req.body;
   if (!faq_id || !rate) {
-    res.status(400).json({ error: 'faq_id와 action은 필수 값입니다.' });
-    return;
+    throw new Error('faq_id와 action은 필수 값입니다.');
   }
 
   const conn: PoolConnection = await Pool.getConnection();
@@ -21,10 +20,6 @@ export const rateFaq = async (
     await updateFaqLogRate(conn, faq_id, rate);
 
     res.json({ success: true });
-    return;
-  } catch (error: any) {
-    console.error(error.message);
-    res.status(500).json({ error: 'FAQ 평가 저장에 실패했습니다.' });
     return;
   } finally {
     conn.release();

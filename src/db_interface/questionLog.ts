@@ -1,5 +1,6 @@
 import { PoolConnection } from 'mysql2/promise';
 import TQuestionLog from '../models/QuestionLog';
+import { DatabaseError } from '../types';
 
 export async function insertQuestionLog(
   conn: PoolConnection,
@@ -16,6 +17,6 @@ VALUES (?, ?, ?, ?, ?);
     console.log('Question 로그가 성공적으로 등록되었습니다.');
   } catch (error: any) {
     console.error('Question 로그 등록 중 오류가 발생했습니다.', error.message);
-    throw new Error('Question 로그 등록에 실패했습니다.');
+    throw new DatabaseError('Question 로그 등록에 실패했습니다.');
   }
 }
