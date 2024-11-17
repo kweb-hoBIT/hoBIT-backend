@@ -19,8 +19,10 @@
     "mongoose": "^8.8.0",
     "mysql2": "^3.11.4",
     "sequelize": "^6.37.5",
+    "snowflake-id": "^1.1.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@types/config": "^3.3.5",
