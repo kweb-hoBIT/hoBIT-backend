@@ -39,3 +39,13 @@ export class DatabaseError extends CustomError {
     );
   }
 }
+
+export class NotFoundError extends CustomError {
+  constructor(text: string) {
+    super(
+      `Not Found Error: ${text}`,
+      404,
+      '요청하신 리소스를 찾을 수 없습니다. URL을 확인하세요.'
+    );
+  }
+}
