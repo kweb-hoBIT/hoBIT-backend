@@ -15,7 +15,7 @@ import { insertQuestionLog } from '../db_interface/questionLog';
 export async function allFaqs(
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ) {
   const conn: PoolConnection = await Pool.getConnection();
 
@@ -24,7 +24,7 @@ export async function allFaqs(
     res.json({ faqs });
   } catch (error: any) {
     console.error(error.message);
-    throw new Error('get_all_faqs 함수 호출 실패');
+    next(new Error('allFaqs 함수 호출 실패'));
   } finally {
     conn.release();
   }
@@ -32,7 +32,8 @@ export async function allFaqs(
 
 export async function question(
   req: Request<{}, {}, QuestionRequest>,
-  res: Response<QuestionResponse | ErrorResponse>
+  res: Response<QuestionResponse | ErrorResponse>,
+  next: NextFunction
 ) {
   const { question } = req.body;
   const conn: PoolConnection = await Pool.getConnection();
@@ -67,7 +68,7 @@ export async function question(
     res.json({ answer: nlpResp[0].text });
   } catch (error: any) {
     console.log(error.message);
-    res.status(500).json({ error: 'get_answer 함수 호출 실패' });
+    next(new Error('question 함수 에러')); // 변경된 부분
   } finally {
     conn.release();
   }
