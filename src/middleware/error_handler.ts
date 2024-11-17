@@ -12,8 +12,8 @@ export const errorHandler = (
   console.error(err.message);
   if (err instanceof CustomError) {
     console.error(err.statusCode);
-    res.status(err.statusCode).send(err.message);
+    res.status(err.statusCode).send(err.externalErrorMessage);
   } else {
-    res.status(400).send(err.message);
+    res.status(500).send(err.message);
   }
 };
