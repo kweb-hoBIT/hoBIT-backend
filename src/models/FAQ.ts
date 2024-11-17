@@ -1,5 +1,5 @@
 export type TFAQ = {
-  id: string;
+  id: number;
   maincategory_ko: string;
   maincategory_en: string;
   subcategory_ko: string;

@@ -2,7 +2,7 @@ import { QuestionLanguage } from '../types/question';
 
 export type TQuestionLog = {
   id: number;
-  faq_id: string | null;
+  faq_id: number | null;
   user_question: string;
   language: QuestionLanguage;
   feedback_score: number | null;

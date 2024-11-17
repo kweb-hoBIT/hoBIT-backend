@@ -1,8 +1,11 @@
 import fs from 'fs';
 import TFAQ from '../src/models/FAQ';
 import { createConnection } from './createDB';
+import SnowflakeID from 'snowflake-id';
 
 const BASE_DB_JSON_PATH: string = './config/base_db.json';
+
+const snowflake = new SnowflakeID({ mid: 42 });
 
 const insertFAQs = async () => {
   const conn = await createConnection();
@@ -14,12 +17,12 @@ const insertFAQs = async () => {
   for (const faq of faqs) {
     const query = `
       INSERT INTO faqs (
-        maincategory_ko, maincategory_en, subcategory_ko, subcategory_en, 
+        id, maincategory_ko, maincategory_en, subcategory_ko, subcategory_en, 
         question_ko, question_en, answer_ko, answer_en, manager
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
-      `faq_${crypto.randomUUID()}`,
+      snowflake.generate(),
       faq.maincategory_ko,
       faq.maincategory_en,
       faq.subcategory_ko,

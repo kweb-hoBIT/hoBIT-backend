@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import SnowflakeID from 'snowflake-id';
 
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
@@ -22,6 +22,7 @@ export const question = async (
   res: Response<QuestionResponse | ErrorResponse>
 ) => {
   const { question } = req.body;
+
   if (!question) {
     throw new ValidationError("invalid parameter, 'question' required");
   }
@@ -43,7 +44,8 @@ export const question = async (
     }
 
     // 난수 기반 faq_id 생성
-    const faqId = `faq_${uuidv4()}`;
+    const snowflake = new SnowflakeID({ mid: 42 });
+    const faqId = snowflake.generate();
 
     res.status(200).json({ answer: nlpResp[0].text });
 
