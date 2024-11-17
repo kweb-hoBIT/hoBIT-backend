@@ -1,41 +1,31 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
-import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
-import { envs } from '../envs';
-import { ErrorResponse } from '../types/faq';
-import { fetchAllFaqs } from '../db_interface/faq';
 import { Pool } from '../../config/connectDB';
-import { NluRequest, NluResponse } from '../types/nlu';
 import TQuestionLog from '../models/QuestionLog';
 import { isEnglish } from '../lib/lang_tools';
-import { QuestionRequest, QuestionResponse } from '../types/question';
-import { insertQuestionLog } from '../db_interface/questionLog';
+import { insertQuestionLog } from '../db_interface';
+import {
+  ErrorResponse,
+  NluError,
+  NluRequest,
+  NluResponse,
+  QuestionRequest,
+  QuestionResponse,
+  ValidationError,
+} from '../types';
+import { fetchNlu } from '../internal/api';
 
-export async function allFaqs(
-  _req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const conn: PoolConnection = await Pool.getConnection();
-
-  try {
-    const faqs = await fetchAllFaqs(conn);
-    res.json({ faqs });
-  } catch (error: any) {
-    console.error(error.message);
-    next(new Error('allFaqs 함수 호출 실패'));
-  } finally {
-    conn.release();
-  }
-}
-
-export async function question(
+export const question = async (
   req: Request<{}, {}, QuestionRequest>,
-  res: Response<QuestionResponse | ErrorResponse>,
-  next: NextFunction
-) {
+  res: Response<QuestionResponse | ErrorResponse>
+) => {
   const { question } = req.body;
+  if (!question) {
+    throw new ValidationError("invalid parameter, 'question' required");
+  }
+
   const conn: PoolConnection = await Pool.getConnection();
 
   try {
@@ -44,32 +34,30 @@ export async function question(
       message: question,
     };
 
-    // TODO: 같은 질문은 캐싱해서 답변
-    const resp = await axios.post(envs.HOBIT_NLU_ENDPOINT!, nluParams, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
+    const resp = await fetchNlu(nluParams);
     const nlpResp: NluResponse = resp.data;
 
-    // TODO: faq_id 난수 생성
+
+    if (!nlpResp || !nlpResp[0]) {
+      throw new NluError('NLU 서버 요청 실패');
+    }
+
+    // 난수 기반 faq_id 생성
+    const faqId = `faq_${uuidv4()}`;
+
+    res.status(200).json({ answer: nlpResp[0].text });
+
     const questionLog: Omit<
       TQuestionLog,
       'id' | 'feedback_score' | 'feedback' | 'created_at'
     > = {
-      faq_id: 1,
+      faq_id: faqId,
       user_question: question,
       language: isEnglish(question) ? 'EN' : 'KO',
     };
 
     await insertQuestionLog(conn, questionLog);
-
-    res.json({ answer: nlpResp[0].text });
-  } catch (error: any) {
-    console.log(error.message);
-    next(new Error('question 함수 에러')); // 변경된 부분
   } finally {
     conn.release();
   }
-}
+};

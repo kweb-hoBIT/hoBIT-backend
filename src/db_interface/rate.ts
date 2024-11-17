@@ -4,7 +4,7 @@ import { DatabaseError } from '../types';
 
 export async function updateFaqLogRate(
   conn: PoolConnection,
-  faq_id: number,
+  faq_id: string,
   rate: 1 | -1
 ) {
   try {

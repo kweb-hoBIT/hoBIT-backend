@@ -53,7 +53,7 @@ const createFAQTable = async () => {
   const connection = await createConnection();
   const query = `
     CREATE TABLE IF NOT EXISTS faqs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
+      id VARCHAR(36) PRIMARY KEY,
       maincategory_ko VARCHAR(45) NOT NULL,
       maincategory_en VARCHAR(45) NOT NULL,
       subcategory_ko VARCHAR(45) NOT NULL,
@@ -80,7 +80,7 @@ const createQuestionLogTable = async () => {
   const query = `
     CREATE TABLE IF NOT EXISTS question_logs (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      faq_id INT,
+      faq_id VARCHAR(36),
       user_question VARCHAR(300) NOT NULL,
       language VARCHAR(45) NOT NULL,
       feedback_score INT,
@@ -99,7 +99,7 @@ const createFaqLogTable = async () => {
     CREATE TABLE IF NOT EXISTS faq_logs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT,
-      faq_id INT,
+      faq_id VARCHAR(36),
       prev_faq VARCHAR(1000) NOT NULL,
       new_faq VARCHAR(1000) NOT NULL,
       action_type VARCHAR(255) NOT NULL,

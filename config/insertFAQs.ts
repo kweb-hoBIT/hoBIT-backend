@@ -19,6 +19,7 @@ const insertFAQs = async () => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
+      `faq_${crypto.randomUUID()}`,
       faq.maincategory_ko,
       faq.maincategory_en,
       faq.subcategory_ko,
