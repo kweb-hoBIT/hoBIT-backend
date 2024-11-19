@@ -19,7 +19,6 @@ SELECT id, question_ko, question_en FROM faqs;
       question_en: row['question_en'],
     }));
 
-    console.log(44, questions);
     return questions;
   } catch (error: any) {
     throw new DatabaseError('질문 목록을 불러오지 못했습니다.');
@@ -55,25 +54,22 @@ SELECT * FROM faqs;
   }
 }
 
-export async function fetchFaqByAnswerKo(
+export async function fetchFaqByFaqId(
   conn: PoolConnection,
-  answerKo: string
+  faq_id: number
 ): Promise<TFAQ | null> {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
 SELECT * FROM faqs
-WHERE answer_ko = ?
+WHERE id = ?
 LIMIT 1;
       `,
-      [answerKo]
+      [faq_id]
     );
 
     const row = rows[0];
-    if (row == null) {
-      console.log(3);
-      return null;
-    }
+    if (row == null) return null;
 
     const faq: TFAQ = {
       id: row['id'],
@@ -93,7 +89,7 @@ LIMIT 1;
     return faq;
   } catch (error: any) {
     throw new DatabaseError(
-      `응답 '${answerKo}'와 일치하는 FAQ를 불러오지 못했습니다.`
+      `ID '${faq_id}'에 해당하는 FAQ를 불러오지 못했습니다.`
     );
   }
 }
