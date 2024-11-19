@@ -6,7 +6,11 @@ import TQuestionLog from '../models/QuestionLog';
 import TFAQ from '../models/FAQ';
 import { isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
 import { calculateFaqWeights } from '../lib/qna_tools';
-import { fetchAllFaqs, insertQuestionLog } from '../db_interface';
+import {
+  fetchAllFaqs,
+  insertQuestionLog,
+  fetchFaqByAnswerKo,
+} from '../db_interface';
 import {
   ErrorResponse,
   NluError,
@@ -38,7 +42,7 @@ export const question = async (
     };
 
     const resp = await fetchNlu(nluParams);
-    const nlpResp: NluResponse = resp.data;
+    const nlpResp: NluResponse = resp;
 
     // TODO: faq_id 난수 생성
     // faq_XXX 형태로
@@ -46,7 +50,8 @@ export const question = async (
       throw new NluError('NLU 서버 요청 실패');
     }
 
-    res.status(200).json({ answer: nlpResp[0].text });
+    let faq = await fetchFaqByAnswerKo(conn, nlpResp[0].text);
+    res.status(200).json({ faq: faq });
 
     const questionLog: Omit<
       TQuestionLog,
