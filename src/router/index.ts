@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { question } from '../apis/question';
+import { question, question_after } from '../apis/question';
 import { rateFaq } from '../apis/rate';
 import { allFaqs } from '../apis/faq';
 import { promiseHandler } from '../middleware/promise_handler';
@@ -72,6 +72,8 @@ router.get('/all_faqs', promiseHandler(allFaqs));
  *         description: Error processing the question
  */
 router.post('/question', promiseHandler(question));
+
+router.post('/question_after', promiseHandler(question_after));
 
 /**
  * @swagger
