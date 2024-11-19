@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { question, question_alter } from '../apis/question';
+import { question, question_after } from '../apis/question';
 import { rateFaq } from '../apis/rate';
 import { allFaqs } from '../apis/faq';
 import { promiseHandler } from '../middleware/promise_handler';
@@ -73,7 +73,7 @@ router.get('/all_faqs', promiseHandler(allFaqs));
  */
 router.post('/question', promiseHandler(question));
 
-router.post('/question_alter', promiseHandler(question_alter));
+router.post('/question_after', promiseHandler(question_after));
 
 /**
  * @swagger

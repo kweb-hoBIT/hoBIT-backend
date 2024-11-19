@@ -5,12 +5,15 @@ import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import TFAQ from '../models/FAQ';
 import { isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
+import { calculateFaqWeights } from '../lib/qna_tools';
 import { fetchAllFaqs, insertQuestionLog } from '../db_interface';
 import {
   ErrorResponse,
   NluError,
   NluRequest,
   NluResponse,
+  QuestionAfterRequest,
+  QuestionAfterResponse,
   QuestionRequest,
   QuestionResponse,
   ValidationError,
@@ -60,9 +63,9 @@ export const question = async (
   }
 };
 
-export const question_alter = async (
-  req: Request<{}, {}, QuestionRequest>,
-  res: Response<Array<TFAQ> | ErrorResponse>
+export const question_after = async (
+  req: Request<{}, {}, QuestionAfterRequest>,
+  res: Response<QuestionAfterResponse | ErrorResponse>
 ) => {
   const { question } = req.body;
   if (!question) {
@@ -89,38 +92,8 @@ export const question_alter = async (
       .sort((a, b) => faqWeights[b.id]! - faqWeights[a.id]!)
       .slice(0, 5);
 
-    res.json(filteredFaqs);
+    res.json({ answersList: filteredFaqs });
   } finally {
     conn.release();
   }
-};
-
-const calculateFaqWeights = (
-  faqs: TFAQ[],
-  tokens: string[],
-  field: 'question_en' | 'question_ko'
-): Record<number, number> => {
-  const faqWeights: Record<number, number> = {};
-
-  faqs.forEach((faq) => {
-    let weight = 0;
-
-    tokens.forEach((token) => {
-      let occurrences;
-      if (field == 'question_en') {
-        occurrences = (
-          faq[field].match(new RegExp(`\\b${token}\\b`, 'gi')) || []
-        ).length;
-      } else {
-        occurrences = (faq[field]?.match(new RegExp(`${token}`, 'gi')) || [])
-          .length;
-      }
-
-      weight += occurrences;
-    });
-
-    faqWeights[faq.id] = weight;
-  });
-
-  return faqWeights;
 };
