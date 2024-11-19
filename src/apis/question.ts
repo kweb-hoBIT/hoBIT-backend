@@ -6,7 +6,11 @@ import TQuestionLog from '../models/QuestionLog';
 import TFAQ from '../models/FAQ';
 import { isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
 import { calculateFaqWeights } from '../lib/qna_tools';
-import { fetchAllFaqs, insertQuestionLog } from '../db_interface';
+import {
+  fetchAllFaqs,
+  insertQuestionLog,
+  fetchFaqByFaqId,
+} from '../db_interface';
 import {
   ErrorResponse,
   NluError,
@@ -33,20 +37,24 @@ export const question = async (
 
   try {
     let nluParams: NluRequest = {
-      sender: 'hobit-back',
+      sender: 'hobit-backend',
       message: question,
     };
 
-    const resp = await fetchNlu(nluParams);
-    const nlpResp: NluResponse = resp.data;
+    const nlpResp: NluResponse = await fetchNlu(nluParams);
+    console.log(7000, nlpResp);
 
-    // TODO: faq_id 난수 생성
-    // faq_XXX 형태로
     if (!nlpResp || !nlpResp[0]) {
       throw new NluError('NLU 서버 요청 실패');
     }
 
-    res.status(200).json({ answer: nlpResp[0].text });
+    if ('text' in nlpResp[0]) {
+      throw new NluError(nlpResp[0].text);
+    }
+
+    //TODO: remove 149 hard coding
+    let faq = await fetchFaqByFaqId(conn, nlpResp[0].custom?.faq_id - 149);
+    res.status(200).json({ faq: faq });
 
     const questionLog: Omit<
       TQuestionLog,

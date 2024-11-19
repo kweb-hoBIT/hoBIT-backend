@@ -3,9 +3,18 @@ export type NluRequest = {
   message: string;
 };
 
-export type NluResponse = Array<NluResponseUnit>;
+export type NluResponse = Array<NluSuccessUnit | NluFailUnit>;
 
-export type NluResponseUnit = {
+export type NluSuccessUnit = {
+  recipient_id: string;
+  custom: NluCustomJson;
+};
+
+export type NluCustomJson = {
+  faq_id: number;
+};
+
+export type NluFailUnit = {
   recipient_id: string;
   text: string;
 };

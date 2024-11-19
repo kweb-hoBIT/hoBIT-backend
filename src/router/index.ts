@@ -2,7 +2,7 @@ import express from 'express';
 
 import { question, question_after } from '../apis/question';
 import { rateFaq } from '../apis/rate';
-import { allFaqs } from '../apis/faq';
+import { allFaqs, allQuestions } from '../apis/faq';
 import { promiseHandler } from '../middleware/promise_handler';
 
 export const router = express.Router();
@@ -39,6 +39,8 @@ export const router = express.Router();
  *         description: Error fetching FAQs
  */
 router.get('/all_faqs', promiseHandler(allFaqs));
+
+router.get('/all_questions', promiseHandler(allQuestions));
 
 /**
  * @swagger
