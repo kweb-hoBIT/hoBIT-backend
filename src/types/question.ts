@@ -9,7 +9,7 @@ export type QuestionAfterRequest = {
 };
 
 export type QuestionResponse = {
-  answer: string;
+  faq: TFAQ | null;
 };
 
 export type QuestionAfterResponse = {

@@ -1,5 +1,6 @@
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
+import cors from 'cors';
 
 import { swaggerSpec } from '../../swaggerConfig';
 import { router } from '../router/index';
@@ -12,6 +13,8 @@ const API_V0 = '/api/v0';
 export async function runServer() {
   const app = express();
 
+  app.use(cors());
+
   app.get('/', (_req, res) => {
     res.send({ status: 'State' });
   });
@@ -21,10 +24,10 @@ export async function runServer() {
   app.use(express.json());
   app.use(API_V0, router);
 
-  // 처리되지 않은 리소스에 대한 NotFoundError 추가
   app.use((req, _res, next) => {
     next(new NotFoundError(`The requested resource ${req.path} was not found`));
   });
+
   app.use(errorHandler);
 
   app.listen(PORT, () => {
