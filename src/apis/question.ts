@@ -3,7 +3,7 @@ import { PoolConnection } from 'mysql2/promise';
 
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
-import { isEnglish } from '../lib/lang_tools';
+import { detectLanguage } from '../lib/lang_tools';
 import { insertQuestionLog } from '../db_interface';
 import {
   ErrorResponse,
@@ -50,7 +50,7 @@ export const question = async (
     > = {
       faq_id: 1,
       user_question: question,
-      language: isEnglish(question) ? 'EN' : 'KO',
+      language: detectLanguage(question),
     };
 
     await insertQuestionLog(conn, questionLog);
