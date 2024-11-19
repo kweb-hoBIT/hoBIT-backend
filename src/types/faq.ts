@@ -5,7 +5,7 @@ export type AllFaqsResponse = {
 };
 
 export type Question = {
-  id: number;
+  faq_id: number;
   question_ko: string;
   question_en: string;
 };

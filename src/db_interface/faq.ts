@@ -14,11 +14,12 @@ SELECT id, question_ko, question_en FROM faqs;
     );
 
     const questions: Question[] = rows.map((row) => ({
-      id: row['id'],
+      faq_id: row['id'],
       question_ko: row['question_ko'],
       question_en: row['question_en'],
     }));
 
+    console.log(44, questions);
     return questions;
   } catch (error: any) {
     throw new DatabaseError('질문 목록을 불러오지 못했습니다.');
