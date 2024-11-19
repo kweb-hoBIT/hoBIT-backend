@@ -106,9 +106,15 @@ const calculateFaqWeights = (
     let weight = 0;
 
     tokens.forEach((token) => {
-      const occurrences = (
-        faq[field].match(new RegExp(`\\b${token}\\b`, 'gi')) || []
-      ).length;
+      let occurrences;
+      if (field == 'question_en') {
+        occurrences = (
+          faq[field].match(new RegExp(`\\b${token}\\b`, 'gi')) || []
+        ).length;
+      } else {
+        occurrences = (faq[field]?.match(new RegExp(`${token}`, 'gi')) || [])
+          .length;
+      }
 
       weight += occurrences;
     });
