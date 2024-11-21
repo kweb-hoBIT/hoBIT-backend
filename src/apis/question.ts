@@ -4,7 +4,12 @@ import { PoolConnection } from 'mysql2/promise';
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import TFAQ from '../models/FAQ';
-import { detectLanguage, isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
+import {
+  detectLanguage,
+  isEnglish,
+  tokenizeEnglish,
+  tokenizeKorean,
+} from '../lib/lang_tools';
 import { calculateFaqWeights } from '../lib/qna_tools';
 import {
   fetchAllFaqs,
@@ -42,7 +47,6 @@ export const question = async (
     };
 
     const nlpResp: NluResponse = await fetchNlu(nluParams);
-    console.log(7000, nlpResp);
 
     if (!nlpResp || !nlpResp[0]) {
       throw new NluError('NLU 서버 요청 실패');
@@ -52,8 +56,7 @@ export const question = async (
       throw new NluError(nlpResp[0].text);
     }
 
-    //TODO: remove 149 hard coding
-    let faq = await fetchFaqByFaqId(conn, nlpResp[0].custom?.faq_id - 149);
+    let faq = await fetchFaqByFaqId(conn, nlpResp[0].custom?.faq_id);
     res.status(200).json({ faq: faq });
 
     const questionLog: Omit<

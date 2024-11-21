@@ -1,6 +1,5 @@
 import mysql from 'mysql2/promise';
 import config from 'config';
-import { insertFAQs } from './insertFAQs';
 
 const dbHost = config.get<string>('dbHost');
 const dbUser = config.get<string>('dbUser');
@@ -26,7 +25,6 @@ const createDB = async () => {
     password: dbPassword,
   });
 
-  await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
   await connection.end();
 };
@@ -140,14 +138,7 @@ const createTables = async () => {
 };
 
 // 데이터베이스 및 테이블 생성
-const initializeDatabase = async () => {
+export const initializeDatabase = async () => {
   await createDB();
   await createTables();
 };
-
-const populateDatabase = async () => {
-  await initializeDatabase();
-  await insertFAQs();
-};
-
-export { populateDatabase };
