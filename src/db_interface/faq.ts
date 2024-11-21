@@ -54,24 +54,24 @@ SELECT * FROM faqs;
   }
 }
 
-export async function fetchFaqByFaqId(
+export async function fetchFaqByFaqIds(
   conn: PoolConnection,
-  faq_id: number
-): Promise<TFAQ | null> {
+  faq_ids: number[]
+): Promise<TFAQ[]> {
   try {
+    if (faq_ids.length === 0) return [];
+
+    const placeholders = faq_ids.map(() => '?').join(', ');
+
     const [rows] = await conn.query<RowDataPacket[]>(
       `
 SELECT * FROM faqs
-WHERE id = ?
-LIMIT 1;
+WHERE id IN (${placeholders});
       `,
-      [faq_id]
+      faq_ids
     );
 
-    const row = rows[0];
-    if (row == null) return null;
-
-    const faq: TFAQ = {
+    const faqs: TFAQ[] = rows.map((row) => ({
       id: row['id'],
       maincategory_ko: row['maincategory_ko'],
       maincategory_en: row['maincategory_en'],
@@ -84,12 +84,12 @@ LIMIT 1;
       manager: row['manager'],
       created_by: row['created_by'],
       updated_by: row['updated_by'],
-    };
+    }));
 
-    return faq;
+    return faqs;
   } catch (error: any) {
     throw new DatabaseError(
-      `ID '${faq_id}'에 해당하는 FAQ를 불러오지 못했습니다.`
+      `IDs '${faq_ids.join(', ')}'에 해당하는 FAQ를 불러오지 못했습니다.`
     );
   }
 }

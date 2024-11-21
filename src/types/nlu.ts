@@ -3,7 +3,7 @@ export type NluRequest = {
   message: string;
 };
 
-export type NluResponse = Array<NluSuccessUnit | NluFailUnit>;
+export type NluResponse = Array<NluSuccessUnit | NluAltUnit>;
 
 export type NluSuccessUnit = {
   recipient_id: string;
@@ -14,7 +14,7 @@ export type NluCustomJson = {
   faq_id: number;
 };
 
-export type NluFailUnit = {
+export type NluAltUnit = {
   recipient_id: string;
   text: string;
 };
