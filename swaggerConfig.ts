@@ -9,7 +9,7 @@ const swaggerOptions = {
       description: 'HoBIT API Docs',
     },
   },
-  apis: ['./src/router/index.ts'],
+  apis: ['./src/docs/swagger.yaml'],
 };
 
 export const swaggerSpec = swaggerJsDoc(swaggerOptions);
