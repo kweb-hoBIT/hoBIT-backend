@@ -2,6 +2,7 @@ import TFAQ from '../models/FAQ';
 
 export type QuestionRequest = {
   question: string;
+  language: QuestionLanguage;
 };
 
 export type QuestionAfterRequest = {

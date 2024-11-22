@@ -4,12 +4,7 @@ import { PoolConnection } from 'mysql2/promise';
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import TFAQ from '../models/FAQ';
-import {
-	detectLanguage,
-	isEnglish,
-	tokenizeEnglish,
-	tokenizeKorean,
-} from '../lib/lang_tools';
+import { isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
 import { calculateFaqWeights } from '../lib/qna_tools';
 import {
 	fetchAllFaqs,
@@ -33,7 +28,7 @@ export const question = async (
 	req: Request<{}, {}, QuestionRequest>,
 	res: Response<QuestionResponse | ErrorResponse>
 ) => {
-	const { question } = req.body;
+	const { question, language } = req.body;
 	if (!question) {
 		throw new ValidationError("invalid parameter, 'question' required");
 	}
@@ -72,7 +67,7 @@ export const question = async (
 		> = {
 			faq_id: 1,
 			user_question: question,
-			language: detectLanguage(question),
+			language,
 		};
 
 		await insertQuestionLog(conn, questionLog);
