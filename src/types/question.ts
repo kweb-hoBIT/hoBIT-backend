@@ -7,6 +7,7 @@ export type QuestionRequest = {
 
 export type QuestionAfterRequest = {
   question: string;
+  language: QuestionLanguage;
 };
 
 export type QuestionResponse = {
