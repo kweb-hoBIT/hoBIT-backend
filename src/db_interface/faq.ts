@@ -93,3 +93,37 @@ WHERE id IN (${placeholders});
     );
   }
 }
+
+
+export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
+  try {
+    const [rows] = await conn.query<RowDataPacket[]>(
+      `
+SELECT * FROM faqs
+ORDER BY updated_by DESC
+LIMIT ?;
+      `,
+      [limit]
+    );
+
+    const faqs: TFAQ[] = rows.map((row) => ({
+      id: row['id'],
+      maincategory_ko: row['maincategory_ko'],
+      maincategory_en: row['maincategory_en'],
+      subcategory_ko: row['subcategory_ko'],
+      subcategory_en: row['subcategory_en'],
+      question_ko: row['question_ko'],
+      question_en: row['question_en'],
+      answer_ko: row['answer_ko'],
+      answer_en: row['answer_en'],
+      manager: row['manager'],
+      created_by: row['created_by'],
+      updated_by: row['updated_by'],
+    }));
+
+    return faqs;
+  } catch (error: any) {
+    throw new DatabaseError('Top FAQs를 불러오지 못했습니다.');
+  }
+}
+
