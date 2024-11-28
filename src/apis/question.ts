@@ -38,7 +38,7 @@ export const question = async (
   const conn: PoolConnection = await Pool.getConnection();
 
   try {
-    let nluParams: NluRequest = {
+    const nluParams: NluRequest = {
       sender: 'hobit-backend',
       message: question,
     };
@@ -60,7 +60,7 @@ export const question = async (
       all_faq_ids.push(nlpResp[0].custom?.faq_id);
     }
 
-    let faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+    const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
     res.status(200).json({ faqs: faqs });
 
     const questionLog: Omit<
