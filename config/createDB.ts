@@ -39,6 +39,7 @@ const createUserTable = async () => {
       password VARCHAR(100) NOT NULL,
       username VARCHAR(45) NOT NULL,
       phone_num VARCHAR(45) NOT NULL UNIQUE,
+      status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -98,8 +99,8 @@ const createFaqLogTable = async () => {
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT,
       faq_id INT,
-      prev_faq VARCHAR(1000) NOT NULL,
-      new_faq VARCHAR(1000) NOT NULL,
+      prev_faq TEXT NOT NULL,
+      new_faq TEXT NOT NULL,
       action_type VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL,

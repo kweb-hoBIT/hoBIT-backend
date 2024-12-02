@@ -94,7 +94,6 @@ WHERE id IN (${placeholders});
   }
 }
 
-
 export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
@@ -127,3 +126,74 @@ LIMIT ?;
   }
 }
 
+export async function fetchFaqByQuestionKo(
+  conn: PoolConnection,
+  questionKo: string
+): Promise<TFAQ[]> {
+  try {
+    const [rows] = await conn.query<RowDataPacket[]>(
+      `
+SELECT * FROM faqs
+WHERE question_ko = ?;
+      `,
+      [questionKo]
+    );
+
+    const faqs: TFAQ[] = rows.map((row) => ({
+      id: row['id'],
+      maincategory_ko: row['maincategory_ko'],
+      maincategory_en: row['maincategory_en'],
+      subcategory_ko: row['subcategory_ko'],
+      subcategory_en: row['subcategory_en'],
+      question_ko: row['question_ko'],
+      question_en: row['question_en'],
+      answer_ko: row['answer_ko'],
+      answer_en: row['answer_en'],
+      manager: row['manager'],
+      created_by: row['created_by'],
+      updated_by: row['updated_by'],
+    }));
+
+    return faqs;
+  } catch (error: any) {
+    throw new DatabaseError(
+      `'${questionKo}'에 해당하는 FAQ를 불러오지 못했습니다.`
+    );
+  }
+}
+
+export async function fetchFaqByQuestionEn(
+  conn: PoolConnection,
+  questionEn: string
+): Promise<TFAQ[]> {
+  try {
+    const [rows] = await conn.query<RowDataPacket[]>(
+      `
+SELECT * FROM faqs
+WHERE question_en = ?;
+      `,
+      [questionEn]
+    );
+
+    const faqs: TFAQ[] = rows.map((row) => ({
+      id: row['id'],
+      maincategory_ko: row['maincategory_ko'],
+      maincategory_en: row['maincategory_en'],
+      subcategory_ko: row['subcategory_ko'],
+      subcategory_en: row['subcategory_en'],
+      question_ko: row['question_ko'],
+      question_en: row['question_en'],
+      answer_ko: row['answer_ko'],
+      answer_en: row['answer_en'],
+      manager: row['manager'],
+      created_by: row['created_by'],
+      updated_by: row['updated_by'],
+    }));
+
+    return faqs;
+  } catch (error: any) {
+    throw new DatabaseError(
+      `'${questionEn}'에 해당하는 FAQ를 불러오지 못했습니다.`
+    );
+  }
+}
