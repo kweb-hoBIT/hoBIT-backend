@@ -39,13 +39,24 @@ export const question = async (
 
   const conn: PoolConnection = await Pool.getConnection();
 
-  let faq =
+  let faqs =
     language == 'KO'
       ? await fetchFaqByQuestionKo(conn, question)
       : await fetchFaqByQuestionEn(conn, question);
 
-  if (faq.length > 0) {
-    res.status(200).json({ faqs: faq });
+  if (faqs.length > 0) {
+    res.status(200).json({ faqs: faqs });
+
+    const questionLog: Omit<
+      TQuestionLog,
+      'id' | 'feedback_score' | 'feedback' | 'created_at'
+    > = {
+      faq_id: faqs[0]!.id,
+      user_question: question,
+      language,
+    };
+
+    await insertQuestionLog(conn, questionLog);
   } else {
     try {
       const nluParams: NluRequest = {
