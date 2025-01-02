@@ -1,6 +1,6 @@
-import { QuestionLanguage } from "../types";
-import { UserFeedbackReason } from "../types/feedback";
-import TFAQ from "./FAQ";
+import { QuestionLanguage } from '../types';
+import { UserFeedbackReason } from '../types/feedback';
+import TFAQ from './FAQ';
 
 export type UserFeedback = {
   id: number;
@@ -10,4 +10,3 @@ export type UserFeedback = {
   language: QuestionLanguage;
   created_by: number | null;
 };
-
