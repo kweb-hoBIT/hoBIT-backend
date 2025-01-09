@@ -1,5 +1,5 @@
 import { PoolConnection } from 'mysql2/promise';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { updateFaqLogRate } from '../db_interface';
 import {
   ErrorResponse,
@@ -12,7 +12,8 @@ import { insertUserFeedback } from '../db_interface/userFeedback';
 
 export const rateFaq = async (
   req: Request<RateFaqRequest>,
-  res: Response<RateFaqResponse | ErrorResponse>
+  res: Response<RateFaqResponse | ErrorResponse>,
+  next: NextFunction
 ) => {
   const { faq_id, user_question, rate, language } = req.body;
 
@@ -46,7 +47,7 @@ export const rateFaq = async (
     res.json({ success: true });
   } catch (error: any) {
     await conn.rollback();
-    throw error;
+    next(error);
   } finally {
     conn.release();
   }
