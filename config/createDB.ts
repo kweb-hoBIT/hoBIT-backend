@@ -74,6 +74,32 @@ const createFAQTable = async () => {
   await connection.end();
 };
 
+const createSeniorFAQTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS senior_faqs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      maincategory_ko VARCHAR(45) NOT NULL,
+      maincategory_en VARCHAR(45) NOT NULL,
+      subcategory_ko VARCHAR(45) NOT NULL,
+      subcategory_en VARCHAR(45) NOT NULL,
+      detailcategory_ko VARCHAR(45) NOT NULL,
+      detailcategory_en VARCHAR(45) NOT NULL,
+      answer_ko VARCHAR(1000) NOT NULL,
+      answer_en VARCHAR(1000) NOT NULL,
+      manager VARCHAR(45) NOT NULL,
+      created_by INT,
+      updated_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `;
+  await connection.query(query);
+  await connection.end();
+};
+
 const createQuestionLogTable = async () => {
   const connection = await createConnection();
   const query = `
@@ -150,6 +176,7 @@ const createUserFeedbacksTable = async () => {
 const createTables = async () => {
   await createUserTable();
   await createFAQTable();
+  await createSeniorFAQTable();
   await createQuestionLogTable();
   await createFaqLogTable();
   await createRelatedFaqTable();

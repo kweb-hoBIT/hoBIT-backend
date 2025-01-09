@@ -66,6 +66,8 @@ export const question = async (
 
       const nlpResp: NluResponse = await fetchNlu(nluParams);
 
+      console.log('Asked nlp, ', nlpResp);
+
       if (!nlpResp || !nlpResp[0]) {
         throw new NluError('NLU 서버 요청 실패');
       }
@@ -76,12 +78,16 @@ export const question = async (
         const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map((match) =>
           Number(match[1])
         );
+        console.log('yes');
         all_faq_ids = faq_ids;
       } else if ('custom' in nlpResp[0]) {
+        console.log('No');
         all_faq_ids.push(nlpResp[0].custom?.faq_id);
       }
 
+      console.log('all faq ids ', all_faq_ids);
       const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+      console.log('36236 ', faqs);
       res.status(200).json({ faqs: faqs });
 
       const questionLog: Omit<
@@ -94,6 +100,8 @@ export const question = async (
       };
 
       await insertQuestionLog(conn, questionLog);
+
+      res.status(200).json({ faqs: faqs });
     } finally {
       conn.release();
     }
