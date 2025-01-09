@@ -1,23 +1,23 @@
 import { TFAQ } from '../models/FAQ';
 
 export type AllFaqsResponse = {
-	faqs: TFAQ[];
+  faqs: TFAQ[];
 };
 
 export type Question = {
-	faq_id: number;
-	question_ko: string;
-	question_en: string;
+  faq_id: number;
+  question_ko: string;
+  question_en: string;
 };
 
 export type AllQuestionsResponse = {
-	questions: Question[];
+  questions: Question[];
 };
 
 export type ErrorResponse = {
-	error: string;
+  error: string;
 };
 
 export type TopFaqsRequest = {
-	limit?: number;
+  limit?: number;
 };
