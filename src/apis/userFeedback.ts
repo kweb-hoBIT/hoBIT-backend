@@ -1,12 +1,16 @@
 import { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2/promise';
-import { DirectUserFeedbacksRequest } from '../types/feedback';
+import {
+  DirectUserFeedbacksRequest,
+  DirectUserFeedbacksResponse,
+} from '../types/feedback';
 import { Pool } from '../../config/connectDB';
 import { insertUserFeedback } from '../db_interface/userFeedback';
+import { ErrorResponse } from '../types';
 
 export const directUserFeedbacks = async (
   req: Request<DirectUserFeedbacksRequest>,
-  res: Response
+  res: Response<DirectUserFeedbacksResponse | ErrorResponse>
 ) => {
   const { feedback_detail, language } = req.body;
   const conn: PoolConnection = await Pool.getConnection();
@@ -20,7 +24,7 @@ export const directUserFeedbacks = async (
 
   try {
     await insertUserFeedback(conn, feedback);
-    res.json({ feedback: feedback });
+    res.json({ success: true });
   } finally {
     conn.release();
   }

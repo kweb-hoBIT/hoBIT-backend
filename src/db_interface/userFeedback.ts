@@ -20,6 +20,7 @@ export async function insertUserFeedback(
       ]
     );
   } catch (error: any) {
+    console.error('Error: ', error);
     throw new DatabaseError('User Feedback 등록에 실패했습니다.');
   }
 }
