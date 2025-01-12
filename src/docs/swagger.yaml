@@ -45,10 +45,38 @@ paths:
                           example: How do I sign up?
                         answer_ko:
                           type: string
-                          example: 회원가입은 이메일을 통해 가능합니다.
+                          example:
+                            [
+                              {
+                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
+                                'url': 'info.korea.ac.kr',
+                                'email': 'k0225@korea.ac.kr',
+                                'phone': '010-1234-5678',
+                              },
+                              {
+                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
                         answer_en:
                           type: string
-                          example: You can sign up using your email.
+                          example:
+                            [
+                              {
+                                'answer ': 'You can sign up using your email.  ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                              {
+                                'answer ': 'Contact for extra help ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
                         manager:
                           type: string
                           example: admin
@@ -141,10 +169,38 @@ paths:
                           example: How do I sign up?
                         answer_ko:
                           type: string
-                          example: 회원가입은 이메일을 통해 가능합니다.
+                          example:
+                            [
+                              {
+                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
+                                'url': 'info.korea.ac.kr',
+                                'email': 'k0225@korea.ac.kr',
+                                'phone': '010-1234-5678',
+                              },
+                              {
+                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
                         answer_en:
                           type: string
-                          example: You can sign up using your email.
+                          example:
+                            [
+                              {
+                                'answer ': 'You can sign up using your email.  ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                              {
+                                'answer ': 'Contact for extra help ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
         400:
           description: Missing required fields
         500:
@@ -189,10 +245,38 @@ paths:
                           example: How do I sign up?
                         answer_ko:
                           type: string
-                          example: 회원가입은 이메일을 통해 가능합니다.
+                          example:
+                            [
+                              {
+                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
+                                'url': 'info.korea.ac.kr',
+                                'email': 'k0225@korea.ac.kr',
+                                'phone': '010-1234-5678',
+                              },
+                              {
+                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
                         answer_en:
                           type: string
-                          example: You can sign up using your email.
+                          example:
+                            [
+                              {
+                                'answer ': 'You can sign up using your email.  ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                              {
+                                'answer ': 'Contact for extra help ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
         400:
           description: Missing required fields
         500:
@@ -233,3 +317,94 @@ paths:
           description: Missing required fields
         500:
           description: Error saving the rating
+  /top_faqs:
+    get:
+      summary: Get top FAQs
+      description: Retrieve a list of the most popular FAQs, limited by a query parameter.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: The maximum number of FAQs to return. Defaults to 5.
+          schema:
+            type: integer
+            example: 5
+      responses:
+        200:
+          description: A list of top FAQs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  faqs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: number
+                          example: 1
+                        maincategory_ko:
+                          type: string
+                          example: 일반 질문
+                        maincategory_en:
+                          type: string
+                          example: General Questions
+                        subcategory_ko:
+                          type: string
+                          example: 가입 관련
+                        subcategory_en:
+                          type: string
+                          example: Registration
+                        question_ko:
+                          type: string
+                          example: 회원가입은 어떻게 하나요?
+                        question_en:
+                          type: string
+                          example: How do I sign up?
+                        answer_ko:
+                          type: string
+                          example:
+                            [
+                              {
+                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
+                                'url': 'info.korea.ac.kr',
+                                'email': 'k0225@korea.ac.kr',
+                                'phone': '010-1234-5678',
+                              },
+                              {
+                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
+                        answer_en:
+                          type: string
+                          example:
+                            [
+                              {
+                                'answer ': 'You can sign up using your email.  ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                              {
+                                'answer ': 'Contact for extra help ',
+                                'url ': 'info.korea.ac.kr ',
+                                'email ': 'k0225@korea.ac.kr ',
+                                'phone ': '010-1234-5678 ',
+                              },
+                            ]
+                        manager:
+                          type: string
+                          example: admin
+                        created_by:
+                          type: string
+                          example: admin
+                        updated_by:
+                          type: string
+                          example: admin
+        500:
+          description: Error fetching top FAQs

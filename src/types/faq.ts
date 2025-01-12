@@ -17,3 +17,7 @@ export type AllQuestionsResponse = {
 export type ErrorResponse = {
   error: string;
 };
+
+export type TopFaqsRequest = {
+  limit?: number;
+};

@@ -13,7 +13,12 @@ const API_V0 = '/api/v0';
 export async function runServer() {
   const app = express();
 
-  app.use(cors());
+  app.use(
+    cors({
+      origin: 'http://localhost:3000',
+      credentials: true,
+    })
+  );
 
   app.get('/', (_req, res) => {
     res.send({ status: 'State' });

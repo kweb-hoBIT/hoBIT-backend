@@ -9,5 +9,7 @@ type Fn<Req = Request, Res = Response> = (
 export const promiseHandler =
   <Req = Request, Res = Response>(fn: Fn<Req, Res>) =>
   (req: Req, res: Res, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+    Promise.resolve(fn(req, res, next)).catch((error) => {
+      next(error);
+    });
   };
