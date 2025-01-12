@@ -13,4 +13,13 @@ export type TFAQ = {
   updated_by: number | null;
 };
 
+export type TFaqAnswer = TFaqCard[];
+
+export type TFaqCard = {
+  answer: string;
+  url: string;
+  email: string;
+  phone: string;
+};
+
 export default TFAQ;

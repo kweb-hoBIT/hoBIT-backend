@@ -3,7 +3,7 @@ import { PoolConnection } from 'mysql2/promise';
 
 import { AllFaqsResponse, AllQuestionsResponse, ErrorResponse } from '../types';
 import { Pool } from '../../config/connectDB';
-import { fetchAllFaqs, fetchAllQuestions } from '../db_interface';
+import { fetchAllFaqs, fetchAllQuestions, fetchTopFaqs } from '../db_interface';
 
 export const allFaqs = async (
   _req: Request,
@@ -28,6 +28,22 @@ export const allQuestions = async (
   try {
     const questions = await fetchAllQuestions(conn);
     res.json({ questions });
+  } finally {
+    conn.release();
+  }
+};
+
+export const topFaqs = async (
+  req: Request,
+  res: Response<AllFaqsResponse | ErrorResponse>
+) => {
+  const { limit } = req.query;
+
+  const conn: PoolConnection = await Pool.getConnection();
+
+  try {
+    const topFaqs = await fetchTopFaqs(conn, Number(limit) || 5);
+    res.json({ faqs: topFaqs });
   } finally {
     conn.release();
   }

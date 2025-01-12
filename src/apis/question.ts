@@ -10,6 +10,8 @@ import {
   fetchAllFaqs,
   insertQuestionLog,
   fetchFaqByFaqIds,
+  fetchFaqByQuestionKo,
+  fetchFaqByQuestionEn,
 } from '../db_interface';
 import {
   ErrorResponse,
@@ -37,44 +39,72 @@ export const question = async (
 
   const conn: PoolConnection = await Pool.getConnection();
 
-  try {
-    let nluParams: NluRequest = {
-      sender: 'hobit-backend',
-      message: question,
-    };
+  let faqs =
+    language == 'KO'
+      ? await fetchFaqByQuestionKo(conn, question)
+      : await fetchFaqByQuestionEn(conn, question);
 
-    const nlpResp: NluResponse = await fetchNlu(nluParams);
-
-    if (!nlpResp || !nlpResp[0]) {
-      throw new NluError('NLU 서버 요청 실패');
-    }
-
-    //TODO: clean code, ask nlu provider to provide response type
-    let all_faq_ids: Array<number> = [];
-    if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
-      const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map((match) =>
-        Number(match[1])
-      );
-      all_faq_ids = faq_ids;
-    } else if ('custom' in nlpResp[0]) {
-      all_faq_ids.push(nlpResp[0].custom?.faq_id);
-    }
-
-    let faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+  if (faqs.length > 0) {
     res.status(200).json({ faqs: faqs });
 
     const questionLog: Omit<
       TQuestionLog,
       'id' | 'feedback_score' | 'feedback' | 'created_at'
     > = {
-      faq_id: 1,
+      faq_id: faqs[0]!.id,
       user_question: question,
       language,
     };
 
     await insertQuestionLog(conn, questionLog);
-  } finally {
-    conn.release();
+  } else {
+    try {
+      const nluParams: NluRequest = {
+        sender: 'hobit-backend',
+        message: question,
+      };
+
+      const nlpResp: NluResponse = await fetchNlu(nluParams);
+
+      console.log('Asked nlp, ', nlpResp);
+
+      if (!nlpResp || !nlpResp[0]) {
+        throw new NluError('NLU 서버 요청 실패');
+      }
+
+      //TODO: clean code, ask nlu provider to provide response type
+      let all_faq_ids: Array<number> = [];
+      if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
+        const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map((match) =>
+          Number(match[1])
+        );
+        console.log('yes');
+        all_faq_ids = faq_ids;
+      } else if ('custom' in nlpResp[0]) {
+        console.log('No');
+        all_faq_ids.push(nlpResp[0].custom?.faq_id);
+      }
+
+      console.log('all faq ids ', all_faq_ids);
+      const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+      console.log('36236 ', faqs);
+      res.status(200).json({ faqs: faqs });
+
+      const questionLog: Omit<
+        TQuestionLog,
+        'id' | 'feedback_score' | 'feedback' | 'created_at'
+      > = {
+        faq_id: faqs[0]!.id,
+        user_question: question,
+        language,
+      };
+
+      await insertQuestionLog(conn, questionLog);
+
+      res.status(200).json({ faqs: faqs });
+    } finally {
+      conn.release();
+    }
   }
 };
 
