@@ -1,5 +1,4 @@
 import { PoolConnection, RowDataPacket } from 'mysql2/promise';
-
 import { DatabaseError, Question } from '../types';
 import TFAQ from '../models/FAQ';
 
