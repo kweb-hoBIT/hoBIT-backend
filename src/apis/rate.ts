@@ -38,8 +38,6 @@ export const rateFaq = async (
         feedback_detail,
         language,
       });
-
-      console.log('Success from neg rate -1');
     }
 
     await conn.commit();

@@ -78,8 +78,8 @@ const createSeniorFAQTable = async () => {
   const connection = await createConnection();
   const query = `
     CREATE TABLE IF NOT EXISTS senior_faqs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      maincategory_ko VARCHAR(45) NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    maincategory_ko VARCHAR(45) NOT NULL,
       maincategory_en VARCHAR(45) NOT NULL,
       subcategory_ko VARCHAR(45) NOT NULL,
       subcategory_en VARCHAR(45) NOT NULL,
