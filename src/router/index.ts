@@ -5,7 +5,7 @@ import { rateFaq } from '../apis/rate';
 import { allFaqs, allQuestions, topFaqs } from '../apis/faq';
 import { promiseHandler } from '../middleware/promise_handler';
 import { directUserFeedback } from '../apis/userFeedback';
-import { allSeniorFaqs } from '../apis/seniorFaq';
+import { allSeniorFaqs, seniorFaqById } from '../apis/seniorFaq';
 
 export const router = express.Router();
 
@@ -17,3 +17,4 @@ router.post('/question_after', promiseHandler(question_after));
 router.post('/rate', promiseHandler(rateFaq));
 router.post('/direct_user_feedback', directUserFeedback);
 router.get('/all_senior_faqs', promiseHandler(allSeniorFaqs));
+router.get('/senior_faq', promiseHandler(seniorFaqById));
