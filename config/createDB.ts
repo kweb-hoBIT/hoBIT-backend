@@ -142,7 +142,6 @@ const createRelatedFaqTable = async () => {
 	const query = `
     CREATE TABLE IF NOT EXISTS related_faqs (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      faq_id INT,
       related_faqs JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
