@@ -10,7 +10,7 @@ export async function insertUserFeedback(
 		await conn.query(
 			`
       INSERT INTO user_feedbacks (feedback_reason, feedback_detail, language)
-      VALUES (?, ?, ?, ?);
+      VALUES (?, ?, ?);
       `,
 			[feedback.feedback_reason, feedback.feedback_detail, feedback.language]
 		);
