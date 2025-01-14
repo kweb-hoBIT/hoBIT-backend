@@ -5,7 +5,7 @@ info:
   description: API to manage and query FAQs.
 
 paths:
-  /all_faqs:
+  /api/v0/all_faqs:
     get:
       summary: Get all FAQs
       description: Retrieve a list of all FAQs
@@ -89,7 +89,7 @@ paths:
         500:
           description: Error fetching FAQs
 
-  /all_questions:
+  /api/v0/all_questions:
     get:
       summary: Get all questions
       description: Retrieve a list of all questions with their IDs
@@ -118,7 +118,7 @@ paths:
         500:
           description: Error fetching questions
 
-  /question:
+  /api/v0/question:
     post:
       summary: Get FAQs for a question
       description: Returns FAQs based on the provided question
@@ -206,7 +206,7 @@ paths:
         500:
           description: Error processing the question
 
-  /question_after:
+  /api/v0/question_after:
     post:
       summary: Get filtered FAQ answers for a question
       description: Returns a list of FAQ answers filtered and ranked based on the provided question
@@ -282,7 +282,7 @@ paths:
         500:
           description: Error processing the question
 
-  /rate:
+  /api/v0/rate:
     post:
       summary: Rate an FAQ
       description: Rate an FAQ by providing its ID and a rate (1 for upvote, -1 for downvote)
@@ -301,7 +301,20 @@ paths:
                   type: integer
                   enum: [1, -1]
                   description: The rate value. Use `1` for upvote and `-1` for downvote.
-                  example: 1
+                  example: -1
+                feedback_reason:
+                  type: string
+                  description: The reason for disliking the FAQ. Optional field.
+                  enum: [unrelated, duplicate, incorrect, insufficient, unclear, other]
+                  example: incorrect
+                feedback_detail:
+                  type: string
+                  description: Additional details about why the FAQ was disliked. Optional field.
+                  example: "The information provided was outdated and inaccurate."
+                language:
+                  type: string
+                  description: The language of the feedback. Use language codes like `en` or `ko`.
+                  example: "en"  
       responses:
         200:
           description: Successfully rated the FAQ
@@ -317,7 +330,7 @@ paths:
           description: Missing required fields
         500:
           description: Error saving the rating
-  /top_faqs:
+  /api/v0/top_faqs:
     get:
       summary: Get top FAQs
       description: Retrieve a list of the most popular FAQs, limited by a query parameter.

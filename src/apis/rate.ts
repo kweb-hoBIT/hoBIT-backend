@@ -15,10 +15,14 @@ export const rateFaq = async (
 	res: Response<RateFaqResponse | ErrorResponse>,
 	next: NextFunction
 ) => {
-	const { faq_id, user_question, rate, language } = req.body;
+	const { faq_id, user_question, rate, language = 'ko', feedback_reason = '', feedback_detail = '' } = req.body;
 
 	if (!faq_id || rate === undefined) {
 		throw new ValidationError('faq_id와 rate는 필수 값입니다.');
+	}
+
+	if (rate === 1 && (feedback_reason || feedback_detail)) {
+		throw new ValidationError('좋아요(rate=1)에서는 피드백을 작성할 수 없습니다.');
 	}
 
 	const conn: PoolConnection = await Pool.getConnection();
@@ -28,13 +32,10 @@ export const rateFaq = async (
 
 		await updateFaqLogRate(conn, faq_id, rate);
 
-		let feedback_reason = null;
-		let feedback_detail = `Unresolved question: ${user_question}`;
-
 		if (rate === -1) {
 			await insertUserFeedback(conn, {
-				feedback_reason,
-				feedback_detail,
+				feedback_reason: feedback_reason || null,
+				feedback_detail: feedback_detail || `Unresolved question: ${user_question}`,
 				language,
 			});
 		}
