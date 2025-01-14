@@ -78,15 +78,15 @@ const createSeniorFAQTable = async () => {
 	const connection = await createConnection();
 	const query = `
     CREATE TABLE IF NOT EXISTS senior_faqs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      maincategory_ko VARCHAR(45) NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    maincategory_ko VARCHAR(45) NOT NULL,
       maincategory_en VARCHAR(45) NOT NULL,
       subcategory_ko VARCHAR(45) NOT NULL,
       subcategory_en VARCHAR(45) NOT NULL,
       detailcategory_ko VARCHAR(45) NOT NULL,
       detailcategory_en VARCHAR(45) NOT NULL,
-      answer_ko VARCHAR(1000) NOT NULL,
-      answer_en VARCHAR(1000) NOT NULL,
+      answer_ko VARCHAR(3000) NOT NULL,
+      answer_en VARCHAR(3000) NOT NULL,
       manager VARCHAR(45) NOT NULL,
       created_by INT,
       updated_by INT,
@@ -142,7 +142,6 @@ const createRelatedFaqTable = async () => {
 	const query = `
     CREATE TABLE IF NOT EXISTS related_faqs (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      faq_id INT,
       related_faqs JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
