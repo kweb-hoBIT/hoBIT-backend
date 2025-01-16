@@ -28,8 +28,8 @@ export const UserFeedbackReasonTranslations = {
 };
 
 export type DirectUserFeedbackRequest = {
-  feedback_reason: UserFeedbackReason;
-  feedback_detail: string;
+  feedback_reason?: UserFeedbackReason;
+  feedback_detail?: string;
   language: QuestionLanguage;
 };
 
