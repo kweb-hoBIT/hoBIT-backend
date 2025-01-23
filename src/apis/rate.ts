@@ -34,10 +34,20 @@ export const rateFaq = async (
 
 		if (rate === -1) {
 			await insertUserFeedback(conn, {
+        faq_id,
 				feedback_reason: feedback_reason || null,
 				feedback_detail: feedback_detail || `Unresolved question: ${user_question}`,
 				language,
 			});
+
+      await conn.query(
+				`
+        UPDATE question_logs
+        SET feedback = ?
+        WHERE faq_id = ?;
+        `,
+				[feedback_detail || `Unresolved question: ${user_question}`, faq_id]
+			);
 		}
 
 		await conn.commit();
