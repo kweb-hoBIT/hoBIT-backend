@@ -16,15 +16,18 @@ export const directUserFeedback = async (
   const conn: PoolConnection = await Pool.getConnection();
 
   const feedback = {
-    feedback_detail,
-    language,
     faq_id: null,
     feedback_reason: null,
+    feedback_detail,
+    language,
   };
 
   try {
     await insertUserFeedback(conn, feedback);
     res.json({ success: true });
+  } catch (error) {
+		console.error('Error inserting feedback:', error);
+		res.status(500).json({ error: 'Feedback 저장에 실패했습니다.' });
   } finally {
     conn.release();
   }

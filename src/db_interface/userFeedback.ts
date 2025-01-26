@@ -1,18 +1,22 @@
 import { PoolConnection } from 'mysql2/promise';
-import { UserFeedback } from '../models/UserFeedback';
 import { DatabaseError } from '../types';
 
 export async function insertUserFeedback(
 	conn: PoolConnection,
-	feedback: Omit<UserFeedback, 'id' | 'created_by'>
+	feedback: {
+		faq_id: number | null;
+		feedback_reason: string | null;
+		feedback_detail: string;
+		language: string;
+	}
 ) {
 	try {
 		await conn.query(
 			`
-      INSERT INTO user_feedbacks (feedback_reason, feedback_detail, language)
-      VALUES (?, ?, ?);
+      INSERT INTO user_feedbacks (faq_id, feedback_reason, feedback_detail, language)
+      VALUES (?, ?, ?, ?);
       `,
-			[feedback.feedback_reason, feedback.feedback_detail, feedback.language]
+			[feedback.faq_id, feedback.feedback_reason, feedback.feedback_detail, feedback.language]
 		);
 	} catch (error: any) {
 		console.error('Error: ', error);
