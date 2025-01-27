@@ -1,5 +1,5 @@
 import { PoolConnection } from 'mysql2/promise';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { updateFaqLogRate } from '../db_interface';
 import {
   ErrorResponse,
@@ -12,8 +12,7 @@ import { insertUserFeedback } from '../db_interface/userFeedback';
 
 export const rateFaq = async (
   req: Request<RateFaqRequest>,
-  res: Response<RateFaqResponse | ErrorResponse>,
-  next: NextFunction
+  res: Response<RateFaqResponse | ErrorResponse>
 ) => {
   const {
     faq_id,
@@ -24,7 +23,7 @@ export const rateFaq = async (
     feedback_detail = '',
   } = req.body;
 
-  if (!faq_id || rate === undefined) {
+  if (!faq_id || rate == undefined || rate == null) {
     throw new ValidationError('faq_id와 rate는 필수 값입니다.');
   }
 
@@ -39,7 +38,7 @@ export const rateFaq = async (
   try {
     await conn.beginTransaction();
 
-    await updateFaqLogRate(conn, faq_id, rate);
+    await updateFaqLogRate(conn, faq_id, rate, feedback_detail);
 
     if (rate === -1) {
       await insertUserFeedback(conn, {
@@ -49,15 +48,6 @@ export const rateFaq = async (
           feedback_detail || `Unresolved question: ${user_question}`,
         language,
       });
-
-      await conn.query(
-        `
-        UPDATE question_logs
-        SET feedback = ?
-        WHERE faq_id = ?;
-        `,
-        [feedback_detail || `Unresolved question: ${user_question}`, faq_id]
-      );
     }
 
     await conn.commit();
@@ -65,7 +55,6 @@ export const rateFaq = async (
     res.json({ success: true });
   } catch (error: any) {
     await conn.rollback();
-    next(error);
   } finally {
     conn.release();
   }

@@ -15,6 +15,6 @@ router.get('/top_faqs', promiseHandler(topFaqs));
 router.post('/question', promiseHandler(question));
 router.post('/question_after', promiseHandler(question_after));
 router.post('/rate', promiseHandler(rateFaq));
-router.post('/direct_user_feedback', directUserFeedback);
+router.post('/direct_user_feedback', promiseHandler(directUserFeedback));
 router.get('/all_senior_faqs', promiseHandler(allSeniorFaqs));
 router.get('/senior_faq', promiseHandler(seniorFaqById));
