@@ -12,6 +12,7 @@ import {
   fetchFaqByFaqIds,
   fetchFaqByQuestionKo,
   fetchFaqByQuestionEn,
+  latestIdQuestionLog,
 } from '../db_interface';
 import {
   ErrorResponse,
@@ -45,8 +46,6 @@ export const question = async (
       : await fetchFaqByQuestionEn(conn, question);
 
   if (faqs.length > 0) {
-    res.status(200).json({ faqs: faqs, is_greet: false });
-
     const questionLog: Omit<
       TQuestionLog,
       'id' | 'feedback_score' | 'feedback' | 'created_at'
@@ -57,6 +56,8 @@ export const question = async (
     };
 
     await insertQuestionLog(conn, questionLog);
+    const id = await latestIdQuestionLog(conn);
+    res.status(200).json({ faqs: faqs, is_greet: false, id: id });
   } else {
     try {
       const nluParams: NluRequest = {
@@ -70,11 +71,11 @@ export const question = async (
         throw new NluError('NLU 서버 요청 실패');
       }
 
+      //TODO: clean code
       if ('custom' in nlpResp[0] && nlpResp[0].custom?.faq_id === 0) {
-        res.status(200).json({ faqs: [], is_greet: true });
+        res.status(200).json({ faqs: [], is_greet: true, id: -1 });
       }
 
-      //TODO: clean code, ask nlu provider to provide response type
       let all_faq_ids: Array<number> = [];
       if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
         const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map((match) =>
@@ -86,7 +87,6 @@ export const question = async (
       }
 
       const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
-      res.status(200).json({ faqs: faqs, is_greet: false });
 
       const questionLog: Omit<
         TQuestionLog,
@@ -98,8 +98,8 @@ export const question = async (
       };
 
       await insertQuestionLog(conn, questionLog);
-
-      res.status(200).json({ faqs: faqs, is_greet: false });
+      const id = await latestIdQuestionLog(conn);
+      res.status(200).json({ faqs: faqs, is_greet: false, id: id });
     } finally {
       conn.release();
     }

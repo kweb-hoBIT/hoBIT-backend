@@ -1,6 +1,6 @@
 import { PoolConnection } from 'mysql2/promise';
 import { Request, Response } from 'express';
-import { updateFaqLogRate } from '../db_interface';
+import { updateQuestionLog } from '../db_interface';
 import {
   ErrorResponse,
   RateFaqRequest,
@@ -15,6 +15,7 @@ export const rateFaq = async (
   res: Response<RateFaqResponse | ErrorResponse>
 ) => {
   const {
+    id,
     faq_id,
     user_question,
     rate,
@@ -23,8 +24,8 @@ export const rateFaq = async (
     feedback_detail = '',
   } = req.body;
 
-  if (!faq_id || rate == undefined || rate == null) {
-    throw new ValidationError('faq_id와 rate는 필수 값입니다.');
+  if (!id || !faq_id || rate == undefined || rate == null) {
+    throw new ValidationError('id, faq_id와 rate는 필수 값입니다.');
   }
 
   if (rate === 1 && (feedback_reason || feedback_detail)) {
@@ -38,7 +39,7 @@ export const rateFaq = async (
   try {
     await conn.beginTransaction();
 
-    await updateFaqLogRate(conn, faq_id, rate, feedback_detail);
+    await updateQuestionLog(conn, id, rate, feedback_detail);
 
     if (rate === -1) {
       await insertUserFeedback(conn, {
@@ -52,7 +53,7 @@ export const rateFaq = async (
 
     await conn.commit();
 
-    res.json({ success: true });
+    res.json({ id: id, success: true });
   } catch (error: any) {
     await conn.rollback();
   } finally {
