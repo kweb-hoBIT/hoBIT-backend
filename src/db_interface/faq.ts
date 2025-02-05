@@ -93,12 +93,16 @@ WHERE id IN (${placeholders});
   }
 }
 
+// WHERE created_at >= NOW() - INTERVAL 1 MONTH
 export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
-SELECT * FROM faqs
-ORDER BY updated_by DESC
+SELECT faq_id, COUNT(*) AS count
+FROM question_logs
+WHERE created_at >= NOW() - INTERVAL 1 MONTH
+GROUP BY faq_id
+ORDER BY count DESC
 LIMIT ?;
       `,
       [limit]
