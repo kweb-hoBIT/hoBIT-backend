@@ -34,15 +34,14 @@ export const allQuestions = async (
 };
 
 export const topFaqs = async (
-  req: Request,
+  _req: Request,
   res: Response<AllFaqsResponse | ErrorResponse>
 ) => {
-  const { limit } = req.query;
-
   const conn: PoolConnection = await Pool.getConnection();
 
   try {
-    const topFaqs = await fetchTopFaqs(conn, Number(limit) || 5);
+    const topFaqs = await fetchTopFaqs(conn, 5);
+
     res.json({ faqs: topFaqs });
   } finally {
     conn.release();
