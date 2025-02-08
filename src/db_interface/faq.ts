@@ -98,12 +98,16 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
-SELECT faq_id, COUNT(*) AS count
-FROM question_logs
-WHERE created_at >= NOW() - INTERVAL 1 MONTH
-GROUP BY faq_id
-ORDER BY count DESC
-LIMIT ?;
+SELECT f.*
+FROM (
+    SELECT faq_id, COUNT(*) AS count
+    FROM question_logs
+    WHERE created_at >= NOW() - INTERVAL 1 MONTH
+    GROUP BY faq_id
+    ORDER BY count DESC
+    LIMIT ?
+) AS top_faqs
+JOIN faqs f ON f.id = top_faqs.faq_id;
       `,
       [limit]
     );
