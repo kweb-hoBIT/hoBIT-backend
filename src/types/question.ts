@@ -13,6 +13,7 @@ export type QuestionAfterRequest = {
 export type QuestionResponse = {
   faqs: TFAQ[] | null;
   is_greet: boolean;
+  is_able: boolean;
   id: number;
 };
 

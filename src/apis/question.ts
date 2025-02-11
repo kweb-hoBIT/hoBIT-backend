@@ -57,7 +57,9 @@ export const question = async (
 
     await insertQuestionLog(conn, questionLog);
     const id = await latestIdQuestionLog(conn);
-    res.status(200).json({ faqs: faqs, is_greet: false, id: id });
+    res
+      .status(200)
+      .json({ faqs: faqs, is_greet: false, is_able: false, id: id });
   } else {
     try {
       const nluParams: NluRequest = {
@@ -72,8 +74,16 @@ export const question = async (
       }
 
       //TODO: clean code
-      if ('custom' in nlpResp[0] && nlpResp[0].custom?.faq_id === 0) {
-        res.status(200).json({ faqs: [], is_greet: true, id: -1 });
+      if ('custom' in nlpResp[0]) {
+        if (nlpResp[0].custom?.faq_id === 0) {
+          res
+            .status(200)
+            .json({ faqs: [], is_greet: true, is_able: false, id: -1 });
+        } else if (nlpResp[0].custom?.faq_id === 1) {
+          res
+            .status(200)
+            .json({ faqs: [], is_greet: false, is_able: true, id: -1 });
+        }
       }
 
       let all_faq_ids: Array<number> = [];
@@ -99,7 +109,9 @@ export const question = async (
 
       await insertQuestionLog(conn, questionLog);
       const id = await latestIdQuestionLog(conn);
-      res.status(200).json({ faqs: faqs, is_greet: false, id: id });
+      res
+        .status(200)
+        .json({ faqs: faqs, is_greet: false, is_able: false, id: id });
     } finally {
       conn.release();
     }

@@ -111,7 +111,7 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
       `,
       [limit, limit]
     );
-    
+
     const faqs: TFAQ[] = rows.map((row) => ({
       id: row['id'],
       maincategory_ko: row['maincategory_ko'],
@@ -129,11 +129,9 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
 
     return faqs;
   } catch (error) {
-    console.error("Error fetching top FAQs:", error);
     throw new DatabaseError('Top FAQs를 불러오지 못했습니다.');
   }
 }
-
 
 export async function fetchFaqByQuestionKo(
   conn: PoolConnection,
