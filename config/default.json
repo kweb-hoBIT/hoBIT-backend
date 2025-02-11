@@ -1,8 +1,8 @@
 {
   "timezone": "+09:00",
   "dbHost": "127.0.0.1",
-  "dbUser": "root",
-  "dbPassword": "",
+  "dbUser": "yoonseo",
+  "dbPassword": "*12dnjf1dlf",
   "dbName": "hobit",
   "jwtSecret": "jwtSecretToken",
   "jwtExpiration": 360000

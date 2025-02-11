@@ -93,25 +93,25 @@ WHERE id IN (${placeholders});
   }
 }
 
-// WHERE created_at >= NOW() - INTERVAL 1 MONTH
 export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `
-SELECT f.*
-FROM (
-    SELECT faq_id, COUNT(*) AS count
-    FROM question_logs
-    WHERE created_at >= NOW() - INTERVAL 1 MONTH
-    GROUP BY faq_id
-    ORDER BY count DESC
-    LIMIT ?
-) AS top_faqs
-JOIN faqs f ON f.id = top_faqs.faq_id;
+      SELECT DISTINCT f.*
+      FROM (
+          SELECT faq_id, COUNT(*) AS count
+          FROM question_logs
+          WHERE created_at >= NOW() - INTERVAL 1 MONTH
+          GROUP BY faq_id
+          ORDER BY count DESC
+          LIMIT ?
+      ) AS top_faqs
+      JOIN faqs f ON f.id = top_faqs.faq_id
+      LIMIT ?;
       `,
-      [limit]
+      [limit, limit]
     );
-
+    
     const faqs: TFAQ[] = rows.map((row) => ({
       id: row['id'],
       maincategory_ko: row['maincategory_ko'],
@@ -128,10 +128,12 @@ JOIN faqs f ON f.id = top_faqs.faq_id;
     }));
 
     return faqs;
-  } catch (error: any) {
+  } catch (error) {
+    console.error("Error fetching top FAQs:", error);
     throw new DatabaseError('Top FAQs를 불러오지 못했습니다.');
   }
 }
+
 
 export async function fetchFaqByQuestionKo(
   conn: PoolConnection,
