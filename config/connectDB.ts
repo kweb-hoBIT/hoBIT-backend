@@ -1,20 +1,19 @@
 import mysql, { Pool as MySQLPool } from 'mysql2/promise';
-import config from 'config';
+import env from './env';
 
-const dbHost = config.get<string>('dbHost');
-const dbUser = config.get<string>('dbUser');
-const dbPassword = config.get<string>('dbPassword');
-const dbName = config.get<string>('dbName');
+const dbHost = env.DB_HOST;
+const dbUser = env.DB_USER;
+const dbPassword = env.DB_PASSWORD;
+const dbName = env.DB_NAME;
 
-// MySQL connection pool
 const Pool: MySQLPool = mysql.createPool({
-  host: dbHost,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+	host: dbHost,
+	user: dbUser,
+	password: dbPassword,
+	database: dbName,
+	waitForConnections: true,
+	connectionLimit: 10,
+	queueLimit: 0,
 });
 
 export { Pool };
