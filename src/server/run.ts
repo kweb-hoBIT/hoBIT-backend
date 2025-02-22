@@ -13,6 +13,11 @@ const API_V0 = '/api/v0';
 export async function runServer() {
   const app = express();
 
+  app.use((req, _res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
   app.use(
     cors({
       origin: 'http://localhost:3000',
