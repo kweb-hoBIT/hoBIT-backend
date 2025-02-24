@@ -20,7 +20,7 @@ export async function runServer() {
 
   app.use(
     cors({
-      origin: ['https://www.hobit.kr', 'https://hobit-frontend.vercel.app'],
+      origin: ['https://www.hobit.kr', 'https://hobit-frontend.vercel.app', 'https://hobit-front-preview.vercel.app'],
       credentials: true,
     })
   );
