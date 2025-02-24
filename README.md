@@ -1,4 +1,4 @@
-# hoBIT backend
+# hoBIT Backend
 
 ```bash
 $ npm start
