@@ -63,8 +63,13 @@ jobs:
             
             cd /home/ubuntu/hobit/hoBIT-backend
             git pull origin main
-            npm install
-            npm run build
-            npm run deploy
+            # 의존성 변경이 있을 때만 npm install 실행
+            git diff --exit-code package.json package-lock.json || npm install
+      
+            # 빌드가 필요한 경우에만 npm run build 실행
+            git diff --exit-code src/ || npm run build
+      
+            # 배포 작업 (필요시 변경)
+            git diff --exit-code src/ || npm run deploy
             pm2 restart "hobit-backend"
           EOF
