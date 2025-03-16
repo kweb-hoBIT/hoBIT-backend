@@ -1,4 +1,4 @@
 export interface ApiLog {
-  uri: string;
-  method: string;
+	uri: string;
+	method: string;
 }
