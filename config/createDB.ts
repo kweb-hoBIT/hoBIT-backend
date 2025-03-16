@@ -8,29 +8,29 @@ const dbName = env.DB_NAME;
 const timezone = env.TIMEZONE;
 
 export const createConnection = async (database: string = dbName) => {
-	return await mysql.createConnection({
-		host: dbHost,
-		user: dbUser,
-		password: dbPassword,
-		database: database,
-		timezone: timezone,
-	});
+  return await mysql.createConnection({
+    host: dbHost,
+    user: dbUser,
+    password: dbPassword,
+    database: database,
+    timezone: timezone,
+  });
 };
 
 const createDB = async () => {
-	const connection = await mysql.createConnection({
-		host: dbHost,
-		user: dbUser,
-		password: dbPassword,
-	});
+  const connection = await mysql.createConnection({
+    host: dbHost,
+    user: dbUser,
+    password: dbPassword,
+  });
 
-	await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-	await connection.end();
+  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+  await connection.end();
 };
 
 const createUserTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       email VARCHAR(45) NOT NULL,
@@ -42,13 +42,13 @@ const createUserTable = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createFAQTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS faqs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       maincategory_ko VARCHAR(45) NOT NULL,
@@ -68,13 +68,13 @@ const createFAQTable = async () => {
       FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createSeniorFAQTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS senior_faqs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     maincategory_ko VARCHAR(45) NOT NULL,
@@ -94,13 +94,13 @@ const createSeniorFAQTable = async () => {
       FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createQuestionLogTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS question_logs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       faq_id INT,
@@ -112,13 +112,13 @@ const createQuestionLogTable = async () => {
       FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createFaqLogTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS faq_logs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT,
@@ -131,13 +131,13 @@ const createFaqLogTable = async () => {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createRelatedFaqTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS related_faqs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       related_faqs JSON,
@@ -148,13 +148,13 @@ const createRelatedFaqTable = async () => {
         ON UPDATE CASCADE
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
 };
 
 const createUserFeedbacksTable = async () => {
-	const connection = await createConnection();
-	const query = `
+  const connection = await createConnection();
+  const query = `
     CREATE TABLE IF NOT EXISTS user_feedbacks (
       id INT AUTO_INCREMENT PRIMARY KEY,
       faq_id INT NULL,
@@ -166,21 +166,37 @@ const createUserFeedbacksTable = async () => {
       FOREIGN KEY (faq_id) REFERENCES faqs(id) ON DELETE SET NULL
     );
   `;
-	await connection.query(query);
-	await connection.end();
+  await connection.query(query);
+  await connection.end();
+};
+
+const createApiLogTable = async () => {
+  const connection = await createConnection();
+  const query = `
+    CREATE TABLE IF NOT EXISTS api_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      uri VARCHAR(255) NOT NULL,
+      method VARCHAR(10) NOT NULL,
+      timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  await connection.query(query);
+  await connection.end();
 };
 
 const createTables = async () => {
-	await createUserTable();
-	await createFAQTable();
-	await createSeniorFAQTable();
-	await createQuestionLogTable();
-	await createFaqLogTable();
-	await createRelatedFaqTable();
-	await createUserFeedbacksTable();
+  await createUserTable();
+  await createFAQTable();
+  await createSeniorFAQTable();
+  await createQuestionLogTable();
+  await createFaqLogTable();
+  await createRelatedFaqTable();
+  await createUserFeedbacksTable();
+  await createApiLogTable();
 };
 
 export const initializeDatabase = async () => {
-	await createDB();
-	await createTables();
+  await createDB();
+  await createTables();
 };

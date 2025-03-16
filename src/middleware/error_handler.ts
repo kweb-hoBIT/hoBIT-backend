@@ -8,8 +8,8 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   if (res.headersSent) return;
-
   console.error(err.message);
+
   if (err instanceof CustomError) {
     console.error(err.statusCode);
     res.status(err.statusCode).send(err.externalErrorMessage);

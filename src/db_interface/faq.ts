@@ -20,7 +20,7 @@ SELECT id, question_ko, question_en FROM faqs;
 
     return questions;
   } catch (error: any) {
-    throw new DatabaseError('질문 목록을 불러오지 못했습니다.');
+    throw new DatabaseError('Failed to retrieve questions');
   }
 }
 
@@ -49,7 +49,7 @@ SELECT * FROM faqs;
 
     return faqs;
   } catch (error: any) {
-    throw new DatabaseError('전체 FAQ를 불러오지 못했습니다.');
+    throw new DatabaseError('Failed to retrieve all faqs');
   }
 }
 
@@ -88,7 +88,7 @@ WHERE id IN (${placeholders});
     return faqs;
   } catch (error: any) {
     throw new DatabaseError(
-      `IDs '${faq_ids.join(', ')}'에 해당하는 FAQ를 불러오지 못했습니다.`
+      `Failed to retrieve faq with ids: '${faq_ids.join(', ')}'`
     );
   }
 }
@@ -129,7 +129,7 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
 
     return faqs;
   } catch (error) {
-    throw new DatabaseError('Top FAQs를 불러오지 못했습니다.');
+    throw new DatabaseError('Failed to retrieve top faqs');
   }
 }
 
@@ -164,7 +164,7 @@ WHERE question_ko = ?;
     return faqs;
   } catch (error: any) {
     throw new DatabaseError(
-      `'${questionKo}'에 해당하는 FAQ를 불러오지 못했습니다.`
+      `Failed to retrieve faq with corresponding '${questionKo}'`
     );
   }
 }
@@ -200,7 +200,7 @@ WHERE question_en = ?;
     return faqs;
   } catch (error: any) {
     throw new DatabaseError(
-      `'${questionEn}'에 해당하는 FAQ를 불러오지 못했습니다.`
+      `Failed to retrieve faq with corresponding '${questionEn}'`
     );
   }
 }
