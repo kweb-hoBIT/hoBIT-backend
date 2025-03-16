@@ -3,11 +3,7 @@ import { PoolConnection } from 'mysql2/promise';
 
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
-import TFAQ from '../models/FAQ';
-import { isEnglish, tokenizeEnglish, tokenizeKorean } from '../lib/lang_tools';
-import { calculateFaqWeights } from '../lib/qna_tools';
 import {
-  fetchAllFaqs,
   insertQuestionLog,
   fetchFaqByFaqIds,
   fetchFaqByQuestionKo,
@@ -19,8 +15,6 @@ import {
   NluError,
   NluRequest,
   NluResponse,
-  QuestionAfterRequest,
-  QuestionAfterResponse,
   QuestionRequest,
   QuestionResponse,
   ValidationError,
@@ -115,42 +109,5 @@ export const question = async (
     } finally {
       conn.release();
     }
-  }
-};
-
-export const question_after = async (
-  req: Request<{}, {}, QuestionAfterRequest>,
-  res: Response<QuestionAfterResponse | ErrorResponse>
-) => {
-  const { question, language } = req.body;
-  if (!question) {
-    throw new ValidationError("invalid parameter, 'question' required");
-  } else if (!language) {
-    throw new ValidationError("invalid parameter, 'language' required");
-  }
-
-  const conn: PoolConnection = await Pool.getConnection();
-
-  try {
-    const faqs: TFAQ[] = await fetchAllFaqs(conn);
-
-    const tokens = isEnglish(question)
-      ? tokenizeEnglish(question)
-      : tokenizeKorean(question);
-
-    const faqWeights = calculateFaqWeights(
-      faqs,
-      tokens,
-      isEnglish(question) ? 'question_en' : 'question_ko'
-    );
-
-    const filteredFaqs: Array<TFAQ> = faqs
-      .filter((faq) => faqWeights[faq.id]! > 0)
-      .sort((a, b) => faqWeights[b.id]! - faqWeights[a.id]!)
-      .slice(0, 5);
-
-    res.json({ answersList: filteredFaqs });
-  } finally {
-    conn.release();
   }
 };

@@ -24,7 +24,6 @@ export async function insertUserFeedback(
       ]
     );
   } catch (error: any) {
-    console.error('Error: ', error);
     throw new DatabaseError('Failed to insert user feedback');
   }
 }
