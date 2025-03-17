@@ -5,9 +5,9 @@ export const errorHandler = (
   err: Error,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ) => {
-  if (res.headersSent) return;
+  if (res.headersSent) return next(err);
   console.error(err);
 
   if (err instanceof CustomError) {
