@@ -20,7 +20,9 @@
 
 <br />
 
-### 프로토타입
+## 🌐 프로덕트
+
+[호빗](https://hobit.kr)
 
 <img src="./images/hobit-mainpage.png" width="400"/>
 
@@ -66,7 +68,7 @@
 
 <br />
 
-## 디비 스키마
+## 🗄️ 디비 스키마
 
 [DB 스키마](https://magnificent-screw-658.notion.site/DB-1b8d8b1360b880d29577f87ad0ef37eb)
 
@@ -86,7 +88,7 @@
 
 <br />
 
-## ENV 변수
+## 🔐 ENV 변수
 
 `hobit` 에 사용되는 환경변수:
 
