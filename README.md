@@ -66,6 +66,12 @@
 
 <br />
 
+## 디비 스키마
+
+[DB 스키마](https://magnificent-screw-658.notion.site/DB-1b8d8b1360b880d29577f87ad0ef37eb)
+
+<br />
+
 ## 🤔 기술적 이슈와 해결 과정
 
 ### DB Deadlock 및 커넥션 누수 문제
