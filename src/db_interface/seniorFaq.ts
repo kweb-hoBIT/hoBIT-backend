@@ -27,7 +27,7 @@ export async function fetchAllSeniorFaqs(
 
     return seniorFaqs;
   } catch (error: any) {
-    throw new DatabaseError('Senior FAQs 데이터를 불러오지 못했습니다.');
+    throw new DatabaseError('Failed to retrieve senior faqs');
   }
 }
 
@@ -59,6 +59,6 @@ export async function fetchSeniorFaqById(
 
     return seniorFaq;
   } catch (error: any) {
-    throw new DatabaseError('Senior FAQ 데이터를 불러오지 못했습니다.');
+    throw new DatabaseError('Failed to retrieve senior faq by id');
   }
 }

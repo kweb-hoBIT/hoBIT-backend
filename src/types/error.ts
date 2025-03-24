@@ -15,7 +15,7 @@ export class ValidationError extends CustomError {
     super(
       `Validation Error: ${text}`,
       400,
-      '요청 데이터가 잘못되었습니다. 필수 값을 확인하세요.'
+      'The request data is invalid. Please check the required fields.'
     );
   }
 }
@@ -25,7 +25,7 @@ export class NluError extends CustomError {
     super(
       `Nlu Error: ${text}`,
       500,
-      '서버에서 문제가 발생했습니다. 관리자에게 문의해 주세요.'
+      'A server error occurred. Please contact the administrator.'
     );
   }
 }
@@ -35,7 +35,7 @@ export class DatabaseError extends CustomError {
     super(
       `Database Error: ${text}`,
       500,
-      '서버에서 문제가 발생했습니다. 관리자에게 문의해 주세요.'
+      'A server error occurred. Please contact the administrator.'
     );
   }
 }
@@ -45,7 +45,7 @@ export class NotFoundError extends CustomError {
     super(
       `Not Found Error: ${text}`,
       404,
-      '요청하신 리소스를 찾을 수 없습니다. URL을 확인하세요.'
+      'The requested resource could not be found. Please check the URL.'
     );
   }
 }

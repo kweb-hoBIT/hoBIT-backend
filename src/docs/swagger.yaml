@@ -1,17 +1,18 @@
 openapi: 3.0.0
 info:
-  title: FAQ API
+  title: Hobit API
   version: 1.0.0
-  description: API to manage and query FAQs.
+  description: Hobit API 문서
 
 paths:
   /api/v0/all_faqs:
     get:
-      summary: Get all FAQs
-      description: Retrieve a list of all FAQs
+      tags: [FAQ]
+      summary: 모든 FAQ 조회
+      description: 전체 FAQ 목록을 조회합니다.
       responses:
         200:
-          description: A list of FAQs
+          description: FAQ 목록 반환
           content:
             application/json:
               schema:
@@ -22,106 +23,37 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
-                          type: number
-                          example: 1
-                        maincategory_ko:
-                          type: string
-                          example: 일반 질문
-                        maincategory_en:
-                          type: string
-                          example: General Questions
-                        subcategory_ko:
-                          type: string
-                          example: 가입 관련
-                        subcategory_en:
-                          type: string
-                          example: Registration
+                        id: { type: number, example: 160 }
+                        maincategory_ko: { type: string, example: 복수전공 }
+                        subcategory_ko: { type: string, example: 졸업 }
                         question_ko:
-                          type: string
-                          example: 회원가입은 어떻게 하나요?
-                        question_en:
-                          type: string
-                          example: How do I sign up?
+                          {
+                            type: string,
+                            example: 컴퓨터학과 복수전공 졸업 요구 조건이 궁금해요,
+                          }
                         answer_ko:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
-                                'url': 'info.korea.ac.kr',
-                                'email': 'k0225@korea.ac.kr',
-                                'phone': '010-1234-5678',
-                              },
-                              {
-                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        answer_en:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer ': 'You can sign up using your email.  ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                              {
-                                'answer ': 'Contact for extra help ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        manager:
-                          type: string
-                          example: admin
-                        created_by:
-                          type: string
-                          example: admin
-                        updated_by:
-                          type: string
-                          example: admin
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              answer:
+                                {
+                                  type: string,
+                                  example: 컴퓨터학과 복수전공 졸업 요건은 전공필수 18학점 + 전공선택 36학점 총 54학점 이수 및 공인외국어 성적 제출입니다.,
+                                }
+                              url: { type: string, example: info.korea.ac.kr }
+                              email:
+                                { type: string, example: k0225@korea.ac.kr }
+                              phone: { type: string, example: 010-1234-5678 }
+                        manager: { type: string, example: admin }
         500:
-          description: Error fetching FAQs
-
-  /api/v0/all_questions:
-    get:
-      summary: Get all questions
-      description: Retrieve a list of all questions with their IDs
-      responses:
-        200:
-          description: A list of questions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  questions:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        faq_id:
-                          type: number
-                          example: 1
-                        question_ko:
-                          type: string
-                          example: 회원가입은 어떻게 하나요?
-                        question_en:
-                          type: string
-                          example: How do I sign up?
-        500:
-          description: Error fetching questions
+          description: FAQ 조회 오류
 
   /api/v0/question:
     post:
-      summary: Get FAQs for a question
-      description: Returns FAQs based on the provided question
+      tags: [질문]
+      summary: 질문으로 FAQ 검색 (NLU 연동)
+      description: 사용자가 입력한 질문으로 관련 FAQ를 검색합니다.
       requestBody:
         required: true
         content:
@@ -130,12 +62,14 @@ paths:
               type: object
               properties:
                 question:
-                  type: string
-                  description: The question to search FAQs for.
-                  example: How do I sign up?
+                  {
+                    type: string,
+                    example: 컴퓨터학과 복수전공 졸업 요구 조건이 궁금해요,
+                  }
+                language: { type: string, enum: [KO, EN], example: KO }
       responses:
         200:
-          description: Matching FAQs
+          description: 관련 FAQ 반환
           content:
             application/json:
               schema:
@@ -146,205 +80,49 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
-                          type: number
-                          example: 1
-                        maincategory_ko:
-                          type: string
-                          example: 일반 질문
-                        maincategory_en:
-                          type: string
-                          example: General Questions
-                        subcategory_ko:
-                          type: string
-                          example: 가입 관련
-                        subcategory_en:
-                          type: string
-                          example: Registration
+                        id: { type: number, example: 160 }
                         question_ko:
-                          type: string
-                          example: 회원가입은 어떻게 하나요?
-                        question_en:
-                          type: string
-                          example: How do I sign up?
+                          {
+                            type: string,
+                            example: 컴퓨터학과 복수전공 졸업 요구 조건이 궁금해요,
+                          }
                         answer_ko:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
-                                'url': 'info.korea.ac.kr',
-                                'email': 'k0225@korea.ac.kr',
-                                'phone': '010-1234-5678',
-                              },
-                              {
-                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        answer_en:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer ': 'You can sign up using your email.  ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                              {
-                                'answer ': 'Contact for extra help ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              answer:
+                                {
+                                  type: string,
+                                  example: 컴퓨터학과 복수전공 졸업 요건은 전공필수 18학점 + 전공선택 36학점 총 54학점 이수 및 공인외국어 성적 제출입니다.,
+                                }
+                              url: { type: string, example: info.korea.ac.kr }
+                              email:
+                                { type: string, example: k0225@korea.ac.kr }
+                              phone: { type: string, example: 010-1234-5678 }
+                  is_greet: { type: boolean, example: false }
+                  is_able: { type: boolean, example: false }
+                  id: { type: number, example: 99 }
         400:
-          description: Missing required fields
+          description: 필수 입력값 누락
         500:
-          description: Error processing the question
+          description: 질문 처리 오류
 
-  /api/v0/question_after:
-    post:
-      summary: Get filtered FAQ answers for a question
-      description: Returns a list of FAQ answers filtered and ranked based on the provided question
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                question:
-                  type: string
-                  description: The question to get answers for.
-                  example: How do I sign up?
-      responses:
-        200:
-          description: Filtered FAQ answers
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  answersList:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          example: 1
-                        question_ko:
-                          type: string
-                          example: 회원가입은 어떻게 하나요?
-                        question_en:
-                          type: string
-                          example: How do I sign up?
-                        answer_ko:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
-                                'url': 'info.korea.ac.kr',
-                                'email': 'k0225@korea.ac.kr',
-                                'phone': '010-1234-5678',
-                              },
-                              {
-                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        answer_en:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer ': 'You can sign up using your email.  ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                              {
-                                'answer ': 'Contact for extra help ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-        400:
-          description: Missing required fields
-        500:
-          description: Error processing the question
-
-  /api/v0/rate:
-    post:
-      summary: Rate an FAQ
-      description: Rate an FAQ by providing its ID and a rate (1 for upvote, -1 for downvote)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                faq_id:
-                  type: number
-                  description: The ID of the FAQ to rate.
-                  example: 1
-                rate:
-                  type: integer
-                  enum: [1, -1]
-                  description: The rate value. Use `1` for upvote and `-1` for downvote.
-                  example: -1
-                feedback_reason:
-                  type: string
-                  description: The reason for disliking the FAQ. Optional field.
-                  enum: [unrelated, duplicate, incorrect, insufficient, unclear, other]
-                  example: incorrect
-                feedback_detail:
-                  type: string
-                  description: Additional details about why the FAQ was disliked. Optional field.
-                  example: "The information provided was outdated and inaccurate."
-                language:
-                  type: string
-                  description: The language of the feedback. Use language codes like `en` or `ko`.
-                  example: "en"  
-      responses:
-        200:
-          description: Successfully rated the FAQ
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-        400:
-          description: Missing required fields
-        500:
-          description: Error saving the rating
   /api/v0/top_faqs:
     get:
-      summary: Get top FAQs
-      description: Retrieve a list of the most popular FAQs, limited by a query parameter.
+      tags: [FAQ]
+      summary: 인기 FAQ 조회
+      description: 가장 많이 사용된 FAQ를 조회합니다.
       parameters:
         - name: limit
           in: query
           required: false
-          description: The maximum number of FAQs to return. Defaults to 5.
           schema:
             type: integer
             example: 5
       responses:
         200:
-          description: A list of top FAQs
+          description: 인기 FAQ 목록 반환
           content:
             application/json:
               schema:
@@ -355,69 +133,235 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
-                          type: number
-                          example: 1
-                        maincategory_ko:
-                          type: string
-                          example: 일반 질문
-                        maincategory_en:
-                          type: string
-                          example: General Questions
-                        subcategory_ko:
-                          type: string
-                          example: 가입 관련
-                        subcategory_en:
-                          type: string
-                          example: Registration
+                        id: { type: number, example: 160 }
+                        maincategory_ko: { type: string, example: 복수전공 }
+                        subcategory_ko: { type: string, example: 졸업 }
                         question_ko:
-                          type: string
-                          example: 회원가입은 어떻게 하나요?
-                        question_en:
-                          type: string
-                          example: How do I sign up?
+                          {
+                            type: string,
+                            example: 컴퓨터학과 복수전공 졸업 요구 조건이 궁금해요,
+                          }
                         answer_ko:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer': '회원가입은 이메일을 통해 가능합니다. ',
-                                'url': 'info.korea.ac.kr',
-                                'email': 'k0225@korea.ac.kr',
-                                'phone': '010-1234-5678',
-                              },
-                              {
-                                'answer ': '궁금한거 있으면 언제든지 연락주세요~ ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        answer_en:
-                          type: string
-                          example:
-                            [
-                              {
-                                'answer ': 'You can sign up using your email.  ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                              {
-                                'answer ': 'Contact for extra help ',
-                                'url ': 'info.korea.ac.kr ',
-                                'email ': 'k0225@korea.ac.kr ',
-                                'phone ': '010-1234-5678 ',
-                              },
-                            ]
-                        manager:
-                          type: string
-                          example: admin
-                        created_by:
-                          type: string
-                          example: admin
-                        updated_by:
-                          type: string
-                          example: admin
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              answer:
+                                {
+                                  type: string,
+                                  example: 컴퓨터학과 복수전공 졸업 요건은 전공필수 18학점 + 전공선택 36학점 총 54학점 이수 및 공인외국어 성적 제출입니다.,
+                                }
+                              url: { type: string, example: info.korea.ac.kr }
+                              email:
+                                { type: string, example: k0225@korea.ac.kr }
+                              phone: { type: string, example: 010-1234-5678 }
         500:
-          description: Error fetching top FAQs
+          description: FAQ 조회 오류
+
+  /api/v0/senior_faqs:
+    get:
+      tags: [시니어 FAQ]
+      summary: 모든 시니어 FAQ 조회
+      description: 전체 시니어 FAQ 목록을 조회합니다.
+      responses:
+        200:
+          description: 시니어 FAQ 목록 반환
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seniorFaqs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: number, example: 8 }
+                        maincategory_ko: { type: string, example: 공간정보 }
+                        maincategory_en:
+                          { type: string, example: Spatial information }
+                        subcategory_ko: { type: string, example: 이과캠퍼스 }
+                        subcategory_en:
+                          { type: string, example: Science Campus }
+                        detailcategory_ko: { type: string, example: 과학도서관 }
+                        detailcategory_en:
+                          { type: string, example: Science Library }
+                        answer_ko:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              title: { type: string, example: 과학도서관 }
+                              answer:
+                                {
+                                  type: string,
+                                  example: 1층에는 알파 라운지,
+                                  인피니티 라운지 등 자유롭게 공부할 수 있는 시설이 있어.,
+                                }
+                              url: { type: string, example: '' }
+                              map:
+                                type: object
+                                properties:
+                                  latitude: { type: string, example: '' }
+                                  longitude: { type: string, example: '' }
+                        answer_en:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              title: { type: string, example: Science Library }
+                              answer:
+                                {
+                                  type: string,
+                                  example: On the first floor,
+                                  you can find the Alpha Lounge and Infinity Lounge.,
+                                }
+                              url: { type: string, example: '' }
+                              map:
+                                type: object
+                                properties:
+                                  latitude: { type: string, example: '' }
+                                  longitude: { type: string, example: '' }
+                        manager: { type: string, example: '-' }
+                        created_by: { type: integer, example: 4 }
+                        updated_by: { type: integer, example: 4 }
+        500:
+          description: 시니어 FAQ 조회 오류
+
+  /api/v0/senior_faq:
+    get:
+      tags: [시니어 FAQ]
+      summary: 시니어 FAQ 단건 조회
+      description: ID로 특정 시니어 FAQ를 조회합니다.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 8
+      responses:
+        200:
+          description: 시니어 FAQ 반환
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seniorFaq:
+                    type: object
+                    properties:
+                      id: { type: number, example: 8 }
+                      question: { type: string, example: 과학도서관 }
+                      answer:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            title: { type: string, example: 과학도서관 }
+                            answer:
+                              {
+                                type: string,
+                                example: 1층에는 알파 라운지,
+                                인피니티 라운지 등 자유롭게 공부할 수 있는 시설이 있어.,
+                              }
+                            url: { type: string, example: '' }
+                            map:
+                              type: object
+                              properties:
+                                latitude: { type: string, example: '' }
+                                longitude: { type: string, example: '' }
+        500:
+          description: 시니어 FAQ 조회 오류
+  /api/v0/rate:
+    post:
+      tags: [평가]
+      summary: FAQ 평가
+      description: FAQ를 평가하고 피드백을 남깁니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: number, example: 99 }
+                faq_id: { type: number, example: 160 }
+                user_question:
+                  {
+                    type: string,
+                    example: 컴퓨터학과 복수전공 졸업 요구 조건이 궁금해요,
+                  }
+                rate: { type: integer, enum: [1, -1, 0], example: -1 }
+                language: { type: string, example: ko }
+                feedback_reason:
+                  {
+                    type: string,
+                    enum:
+                      [
+                        unrelated,
+                        duplicate,
+                        incorrect,
+                        insufficient,
+                        unclear,
+                        other,
+                        null,
+                      ],
+                    example: incorrect,
+                  }
+                feedback_detail:
+                  { type: string, example: 정보가 오래되었습니다. }
+      responses:
+        200:
+          description: 평가 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: number, example: 99 }
+                  success: { type: boolean, example: true }
+        400:
+          description: 필수 입력값 누락
+        500:
+          description: 평가 저장 오류
+
+  /api/v0/direct_feedback:
+    post:
+      tags: [피드백]
+      summary: 직접 피드백 등록
+      description: FAQ와 관계없는 사용자의 직접 피드백을 등록합니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback_reason:
+                  {
+                    type: string,
+                    enum:
+                      [
+                        unrelated,
+                        duplicate,
+                        incorrect,
+                        insufficient,
+                        unclear,
+                        other,
+                      ],
+                    example: insufficient,
+                  }
+                feedback_detail: { type: string, example: 정보가 부족합니다. }
+                language: { type: string, example: ko }
+      responses:
+        200:
+          description: 피드백 등록 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+        500:
+          description: 피드백 저장 오류

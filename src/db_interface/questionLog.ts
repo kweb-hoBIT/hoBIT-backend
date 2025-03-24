@@ -16,7 +16,7 @@ VALUES (?, ?, ?, ?, ?);
       [log.faq_id, log.user_question, log.language, null, null]
     );
   } catch (error: any) {
-    throw new DatabaseError('Question 로그 등록에 실패했습니다.');
+    throw new DatabaseError('Failed to insert question log');
   }
 }
 
@@ -43,9 +43,7 @@ WHERE id = ?
   } catch (error: any) {
     await conn.rollback();
     console.error(error);
-    throw new DatabaseError(
-      'Question Log 피드백 점수 업데이트 중 오류가 발생했습니다.'
-    );
+    throw new DatabaseError('Failed to update feedback in question log');
   } finally {
     conn.release();
   }
@@ -63,6 +61,6 @@ SELECT LAST_INSERT_ID() AS id;
 
     return rows[0] ? rows[0]['id'] : null;
   } catch (error: any) {
-    throw new DatabaseError('최근 삽입된 ID를 가져오는 데 실패했습니다.');
+    throw new DatabaseError('Failed to retrieve latest question log by id');
   }
 }

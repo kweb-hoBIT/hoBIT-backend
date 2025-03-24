@@ -1,11 +1,12 @@
 import express from 'express';
-import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 
-import { swaggerSpec } from '../../swaggerConfig';
 import { router } from '../router/index';
 import { errorHandler } from '../middleware/error_handler';
 import { NotFoundError } from '../types';
+import { logApi } from '../middleware/log';
+import { swaggerSpec } from '../../swaggerConfig';
 
 const PORT = 4000;
 const API_V0 = '/api/v0';
@@ -13,10 +14,7 @@ const API_V0 = '/api/v0';
 export async function runServer() {
   const app = express();
 
-  app.use((req, _res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-  });
+  app.use(logApi);
 
   app.use(
     cors({

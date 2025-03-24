@@ -5,11 +5,11 @@ export const errorHandler = (
   err: Error,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ) => {
-  if (res.headersSent) return;
+  if (res.headersSent) return next(err);
+  console.error(err);
 
-  console.error(err.message);
   if (err instanceof CustomError) {
     console.error(err.statusCode);
     res.status(err.statusCode).send(err.externalErrorMessage);
