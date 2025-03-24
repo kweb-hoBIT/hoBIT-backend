@@ -1,46 +1,86 @@
-# hoBIT Backend
+<div align="center">
 
-```bash
-$ npm start
-```
-# 가이드라인
+<img src="./images/profile.png" width="400"/>
 
-## 브랜치 전략
+</div>
 
-### 작업 순서
+### hoBIT Backend
 
-- 평소
-    1. `develop`에서 `feature/~` 브랜치 생성 후 작업
-    2. 로컬 테스트 후 이상 없을 시 `develop`으로 PR
-    3. 상호 코드 리뷰
-    4. `Approve`시 `develop`에 merge
-    5. 어느 정도 커밋이 쌓이면 `develop`에서 `release/<version>` 브랜치 생성
-    6. QA 진행, 수정사항 발생 시 해당 release 브랜치에서 작업 후 commit
-    7. 모든 테스트 완료 후 `main`으로 merge 및 배포
-- 긴급 수정(hotfix)
-    1. 관리자에게 연락
-    2. `main`에서 `hotfix`브랜치 생성 후 작업
-    3. 로컬 테스트 후 `main` 으로 PR
-    4. 관리자 확인 후 `merge`
+<br/> [<img src="https://img.shields.io/badge/프로젝트 기간-2024.09.15~2025.03.16-green?style=flat&logo=&logoColor=white" />]()
 
-### Git 사용하기
+</div>
 
-- Branch Usage
-    - Repository name should be like following format
-        - `feature/<issue_number>`
-        - `feature/<feature_name>`
-        - `release/<version_number>`
-        - `hotfix/<issue_number>`
-- Commit Message
-    - Commit with the smallest change unit
-    - Use category in commit messages
-        - `int`: only for initial commit
-        - `doc`: changes document or comment
-        - `ftr`: add new feature
-        - `mod`: modify existing feature
-        - `fix`: fix an error or issue
-        - `rfc`: refactor code
-        - `add`: add new file or directory
-        - `rmv`: remove existing file or directory
-    - Example
-        - `int: initial commit`
+## 📝 소개
+
+**hoBIT**은 정보대학 챗봇입니다.
+
+**(ho**: 호랑이, **BIT**: 정보의 최소 단위)
+
+정보대학 행정 관련 질문, 정보대학 선배들의 조언들을 한 곳에 모아두었습니다.
+
+<br />
+
+### 프로토타입
+
+<img src="./images/hobit-mainpage.png" width="400"/>
+
+<br />
+
+## 🗂️ APIs
+
+작성한 API는 아래에서 확인할 수 있습니다.
+
+👉🏻 [API 바로보기](https://magnificent-screw-658.notion.site/19ed8b1360b881f79b3ed11f1b8d4cf4)
+
+<br />
+
+## ⚙ 기술 스택
+
+> skills 폴더에 있는 아이콘을 이용할 수 있습니다.
+
+### Back-end
+
+<div>
+<img src="./images/NodeJS.png" width="80"/>
+<img src="./images/ExpressJS.png" width="80"/>
+<img src="./images/Mysql.png" width="80"/>
+</div>
+
+### Infra
+
+<div>
+<img src="./images/AWSEC2.png" width="80"/>
+<img src="./images/PM2.png" width="80"/>
+</div>
+
+### Tools
+
+<div>
+<img src="./images/Notion.png" width="80"/>
+<img src="./images/Github.png" width="80"/>
+</div>
+
+<br />
+
+## 🛠️ 프로젝트 아키텍쳐
+
+<br />
+
+## 🤔 기술적 이슈와 해결 과정
+
+<br />
+
+## ENV 변수
+
+`hobit` 에 사용되는 환경변수:
+
+| 변수명               | 설명                      |
+| -------------------- | ------------------------- |
+| `TIMEZONE`           | 서버의 기본 시간대        |
+| `DB_HOST`            | 데이터베이스 호스트 주소  |
+| `DB_USER`            | 데이터베이스 사용자명     |
+| `DB_PASSWORD`        | 데이터베이스 비밀번호     |
+| `DB_NAME`            | 데이터베이스 이름         |
+| `JWT_SECRET`         | JWT 토큰 서명 키          |
+| `JWT_EXPIRATION`     | JWT 액세스 토큰 만료 시간 |
+| `HOBIT_NLU_ENDPOINT` | RASA 서버 엔드포인트      |
