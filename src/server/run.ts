@@ -18,7 +18,11 @@ export async function runServer() {
 
   app.use(
     cors({
-      origin: ['https://www.hobit.kr', /^https:\/\/.*\.vercel\.app$/],
+      origin: [
+        'https://www.hobit.kr',
+        /^https:\/\/.*\.vercel\.app$/,
+        'http://localhost:3000',
+      ],
       credentials: true,
     })
   );

@@ -17,6 +17,7 @@ export const directUserFeedback = async (
 
   const feedback = {
     faq_id: null,
+    user_question: '',
     feedback_reason: null,
     feedback_detail,
     language,

@@ -29,7 +29,9 @@ export const rateFaq = async (
   }
 
   if (rate === 1 && (feedback_reason || feedback_detail)) {
-    throw new ValidationError('Feedback unallowed if rate == 1');
+    throw new ValidationError(
+      '좋아요(rate=1)에서는 피드백을 작성할 수 없습니다.'
+    );
   }
 
   const conn: PoolConnection = await Pool.getConnection();
@@ -42,6 +44,7 @@ export const rateFaq = async (
     if (rate === -1) {
       await insertUserFeedback(conn, {
         faq_id,
+        user_question,
         feedback_reason: feedback_reason || null,
         feedback_detail:
           feedback_detail || `Unresolved question: ${user_question}`,
