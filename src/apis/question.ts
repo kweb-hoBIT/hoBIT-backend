@@ -4,51 +4,51 @@ import { PoolConnection } from 'mysql2/promise';
 import { Pool } from '../../config/connectDB';
 import TQuestionLog from '../models/QuestionLog';
 import {
-  insertQuestionLog,
-  fetchFaqByFaqIds,
-  fetchFaqByQuestionKo,
-  fetchFaqByQuestionEn,
-  latestIdQuestionLog,
+	insertQuestionLog,
+	fetchFaqByFaqIds,
+	fetchFaqByQuestionKo,
+	fetchFaqByQuestionEn,
+	latestIdQuestionLog,
 } from '../db_interface';
 import {
-  ErrorResponse,
-  NluError,
-  NluRequest,
-  NluResponse,
-  QuestionRequest,
-  QuestionResponse,
-  ValidationError,
+	ErrorResponse,
+	NluError,
+	NluRequest,
+	NluResponse,
+	QuestionRequest,
+	QuestionResponse,
+	ValidationError,
 } from '../types';
 import { fetchNlu } from '../internal/api';
 
 export const question = async (
-  req: Request<{}, {}, QuestionRequest>,
-  res: Response<QuestionResponse | ErrorResponse>
+	req: Request<{}, {}, QuestionRequest>,
+	res: Response<QuestionResponse | ErrorResponse>
 ) => {
-  const { question, language } = req.body;
-  if (!question) {
-    throw new ValidationError("invalid parameter, 'question' required");
-  } else if (!language) {
-    throw new ValidationError("invalid parameter, 'language' required");
-  }
+	const { question, language } = req.body;
+	if (!question) {
+		throw new ValidationError("invalid parameter, 'question' required");
+	} else if (!language) {
+		throw new ValidationError("invalid parameter, 'language' required");
+	}
 
-  const conn: PoolConnection = await Pool.getConnection();
+	const conn: PoolConnection = await Pool.getConnection();
 
-  try {
-    let faqs =
-      language == 'KO'
-        ? await fetchFaqByQuestionKo(conn, question)
-        : await fetchFaqByQuestionEn(conn, question);
+	try {
+		let faqs =
+			language == 'KO'
+				? await fetchFaqByQuestionKo(conn, question)
+				: await fetchFaqByQuestionEn(conn, question);
 
-    if (faqs.length > 0) {
-      const questionLog: Omit<
-        TQuestionLog,
-        'id' | 'feedback_score' | 'feedback' | 'created_at'
-      > = {
-        faq_id: faqs[0]!.id,
-        user_question: question,
-        language,
-      };
+		if (faqs.length > 0) {
+			const questionLog: Omit<
+				TQuestionLog,
+				'id' | 'feedback_score' | 'feedback' | 'created_at'
+			> = {
+				faq_id: faqs[0]!.id,
+				user_question: question,
+				language,
+			};
 
       await insertQuestionLog(conn, questionLog);
       const id = await latestIdQuestionLog(conn);
@@ -62,11 +62,11 @@ export const question = async (
           message: question,
         };
 
-        const nlpResp: NluResponse = await fetchNlu(nluParams);
+				const nlpResp: NluResponse = await fetchNlu(nluParams);
 
-        if (!nlpResp || !nlpResp[0]) {
-          throw new NluError('NLU 서버 요청 실패');
-        }
+				if (!nlpResp || !nlpResp[0]) {
+					throw new NluError('NLU 서버 요청 실패');
+				}
 
         //TODO: clean code
         if ('custom' in nlpResp[0]) {
@@ -85,26 +85,26 @@ export const question = async (
           }
         }
 
-        let all_faq_ids: Array<number> = [];
-        if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
-          const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map(
-            (match) => Number(match[1])
-          );
-          all_faq_ids = faq_ids;
-        } else if ('custom' in nlpResp[0]) {
-          all_faq_ids.push(nlpResp[0].custom?.faq_id);
-        }
+				let all_faq_ids: Array<number> = [];
+				if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
+					const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map(
+						(match) => Number(match[1])
+					);
+					all_faq_ids = faq_ids;
+				} else if ('custom' in nlpResp[0]) {
+					all_faq_ids.push(nlpResp[0].custom?.faq_id);
+				}
 
-        const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+				const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
 
-        const questionLog: Omit<
-          TQuestionLog,
-          'id' | 'feedback_score' | 'feedback' | 'created_at'
-        > = {
-          faq_id: faqs[0]!.id,
-          user_question: question,
-          language,
-        };
+				const questionLog: Omit<
+					TQuestionLog,
+					'id' | 'feedback_score' | 'feedback' | 'created_at'
+				> = {
+					faq_id: faqs[0]!.id,
+					user_question: question,
+					language,
+				};
 
         await insertQuestionLog(conn, questionLog);
         const id = await latestIdQuestionLog(conn);
