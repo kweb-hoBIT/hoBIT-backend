@@ -52,6 +52,7 @@ export const question = async (
 
       await insertQuestionLog(conn, questionLog);
       const id = await latestIdQuestionLog(conn);
+	  if (id === null) throw new Error("id not found");
       res
         .status(200)
         .json({ faqs: faqs, is_greet: false, is_able: false, is_freq: false, id: id });
@@ -85,29 +86,30 @@ export const question = async (
           }
         }
 
-				let all_faq_ids: Array<number> = [];
-				if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
-					const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map(
-						(match) => Number(match[1])
-					);
-					all_faq_ids = faq_ids;
-				} else if ('custom' in nlpResp[0]) {
-					all_faq_ids.push(nlpResp[0].custom?.faq_id);
-				}
+		let all_faq_ids: Array<number> = [];
+		if ('text' in nlpResp[0] && nlpResp[1] && 'text' in nlpResp[1]) {
+			const faq_ids = [...nlpResp[1].text.matchAll(/#(\d+)/g)].map(
+				(match) => Number(match[1])
+			);
+			all_faq_ids = faq_ids;
+		} else if ('custom' in nlpResp[0]) {
+			all_faq_ids.push(nlpResp[0].custom?.faq_id);
+		}
 
-				const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+		const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
 
-				const questionLog: Omit<
-					TQuestionLog,
-					'id' | 'feedback_score' | 'feedback' | 'created_at'
-				> = {
-					faq_id: faqs[0]!.id,
-					user_question: question,
-					language,
-				};
+		const questionLog: Omit<
+			TQuestionLog,
+			'id' | 'feedback_score' | 'feedback' | 'created_at'
+		> = {
+			faq_id: faqs[0]!.id,
+			user_question: question,
+			language,
+		};
 
         await insertQuestionLog(conn, questionLog);
         const id = await latestIdQuestionLog(conn);
+		if (id === null) throw new Error("id not found");
         res
           .status(200)
           .json({ faqs: faqs, is_greet: false, is_able: false, is_freq: false, id: id });

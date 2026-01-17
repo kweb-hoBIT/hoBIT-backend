@@ -31,6 +31,10 @@ export async function runServer() {
 		res.send({ status: 'State' });
 	});
 
+	app.get('/health', (_req, res) => {
+		res.status(200).json({ status: 'ok' });
+	});
+
 	app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 	app.use(express.json());
