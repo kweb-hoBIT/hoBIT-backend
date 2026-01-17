@@ -12,15 +12,15 @@
 
 ## 📝 소개
 
-**호빗**은 고려대학교 정보대학 행정 관련 질문, 정보대학 선배들의 조언들을 한 곳에 모아둔 챗봇입니다.
+**hoBIT**은 정보대학 챗봇입니다.
 
-자세한 내용은 [호빗 소개](https://magnificent-screw-658.notion.site/hoBIT-19ed8b1360b88003bf51e2b299b287ff?pvs=4)에서 확인해주세요.
+**(ho**: 호랑이, **BIT**: 정보의 최소 단위)
+
+정보대학 행정 관련 질문, 정보대학 선배들의 조언들을 한 곳에 모아두었습니다.
 
 <br />
 
-## 🌐 프로덕트
-
-[호빗](https://hobit.kr)
+### 프로토타입
 
 <img src="./images/hobit-mainpage.png" width="400"/>
 
@@ -62,23 +62,11 @@
 
 <br />
 
-## 🛠️ 파이프라인
-
-### Deployment Pipeline
-
-<p align="center">
-<img width="800" alt="Image" src="https://github.com/user-attachments/assets/a0fa219e-5f90-470a-9b5c-d12b87dc3985" />
-</p>
-
-### Creating FAQ
-
-<p align="center">
-<img width="800" alt="Image" src="https://github.com/user-attachments/assets/a0c4d190-87e3-4fb1-9adc-fb59c81aa12e" />
-</p>
+## 🛠️ 프로젝트 아키텍쳐
 
 <br />
 
-## 🗄️ 디비 스키마
+## 디비 스키마
 
 [DB 스키마](https://magnificent-screw-658.notion.site/DB-1b8d8b1360b880d29577f87ad0ef37eb)
 
