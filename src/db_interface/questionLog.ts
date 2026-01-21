@@ -51,7 +51,7 @@ WHERE id = ?
 
 export async function latestIdQuestionLog(
   conn: PoolConnection
-): Promise<number> {
+): Promise<number | null>{
   try {
     const [rows] = await conn.query<RowDataPacket[]>(
       `

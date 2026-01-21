@@ -14,6 +14,7 @@ export type QuestionResponse = {
   faqs: TFAQ[] | null;
   is_greet: boolean;
   is_able: boolean;
+  is_freq: boolean;
   id: number;
 };
 

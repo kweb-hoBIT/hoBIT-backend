@@ -6,44 +6,44 @@ import { Pool } from '../../config/connectDB';
 import { fetchAllFaqs, fetchAllQuestions, fetchTopFaqs } from '../db_interface';
 
 export const allFaqs = async (
-  _req: Request,
-  res: Response<AllFaqsResponse | ErrorResponse>
+	_req: Request,
+	res: Response<AllFaqsResponse | ErrorResponse>
 ) => {
-  const conn: PoolConnection = await Pool.getConnection();
+	const conn: PoolConnection = await Pool.getConnection();
 
-  try {
-    const faqs = await fetchAllFaqs(conn);
-    res.json({ faqs });
-  } finally {
-    conn.release();
-  }
+	try {
+		const faqs = await fetchAllFaqs(conn);
+		res.json({ faqs });
+	} finally {
+		conn.release();
+	}
 };
 
 export const allQuestions = async (
-  _req: Request,
-  res: Response<AllQuestionsResponse | ErrorResponse>
+	_req: Request,
+	res: Response<AllQuestionsResponse | ErrorResponse>
 ) => {
-  const conn: PoolConnection = await Pool.getConnection();
+	const conn: PoolConnection = await Pool.getConnection();
 
-  try {
-    const questions = await fetchAllQuestions(conn);
-    res.json({ questions });
-  } finally {
-    conn.release();
-  }
+	try {
+		const questions = await fetchAllQuestions(conn);
+		res.json({ questions });
+	} finally {
+		conn.release();
+	}
 };
 
 export const topFaqs = async (
-  _req: Request,
-  res: Response<AllFaqsResponse | ErrorResponse>
+	_req: Request,
+	res: Response<AllFaqsResponse | ErrorResponse>
 ) => {
-  const conn: PoolConnection = await Pool.getConnection();
+	const conn: PoolConnection = await Pool.getConnection();
 
-  try {
-    const topFaqs = await fetchTopFaqs(conn, 5);
+	try {
+		const topFaqs = await fetchTopFaqs(conn, 5);
 
-    res.json({ faqs: topFaqs });
-  } finally {
-    conn.release();
-  }
+		res.json({ faqs: topFaqs });
+	} finally {
+		conn.release();
+	}
 };

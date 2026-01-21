@@ -102,6 +102,7 @@ paths:
                               phone: { type: string, example: 010-1234-5678 }
                   is_greet: { type: boolean, example: false }
                   is_able: { type: boolean, example: false }
+                  is_freq: {type: boolean, example: false}
                   id: { type: number, example: 99 }
         400:
           description: 필수 입력값 누락
