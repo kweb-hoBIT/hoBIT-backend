@@ -31,7 +31,17 @@ export const moderateContent = async (
             allowed: !result.flagged,
             categories: result.categories,
         });
-    } catch (error) {
+    } catch (error: any) {
+        // Rate limit 에러 시 기본 허용
+        if (error?.status === 429) {
+            console.warn('OpenAI rate limit exceeded, allowing content by default');
+            res.status(200).json({
+                allowed: true,
+                categories: {},
+                warning: 'Moderation temporarily unavailable'
+            });
+            return;
+        }
         next(error);
     }
 };
