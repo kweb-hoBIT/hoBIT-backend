@@ -75,14 +75,17 @@ export const question = async (
             res
               .status(200)
               .json({ faqs: [], is_greet: true, is_able: false, is_freq: false, id: -1 });
+            return;
           } else if (nlpResp[0].custom?.faq_id === 1) {
             res
               .status(200)
               .json({ faqs: [], is_greet: false, is_able: true, is_freq: false, id: -1 });
+            return;
           } else if (nlpResp[0].custom?.faq_id === 2) {
             res
               .status(200)
               .json({ faqs: [], is_greet: false, is_able: false, is_freq: true, id: -1 });
+            return;
           }
         }
 
@@ -97,6 +100,19 @@ export const question = async (
 		}
 
 		const faqs = await fetchFaqByFaqIds(conn, all_faq_ids);
+
+		// FAQ를 찾지 못한 경우 처리
+		if (!faqs || faqs.length === 0) {
+			console.warn('No FAQs found for IDs:', all_faq_ids);
+			res.status(200).json({ 
+				faqs: [], 
+				is_greet: false, 
+				is_able: false, 
+				is_freq: false, 
+				id: -1 
+			});
+			return;
+		}
 
 		const questionLog: Omit<
 			TQuestionLog,
