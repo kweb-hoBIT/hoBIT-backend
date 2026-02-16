@@ -2,10 +2,10 @@ const OpenAI = require('openai');
 require('dotenv').config(); // 기본적으로 루트의 .env 사용
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
-console.log('Using API Key:', process.env.OPENAI_KEY ? process.env.OPENAI_KEY.substring(0, 20) + '...' : 'NOT FOUND');
+console.log('Using API Key:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 20) + '...' : 'NOT FOUND');
 
 async function testModeration(content) {
     console.log('\n🔍 Testing content:', content);
