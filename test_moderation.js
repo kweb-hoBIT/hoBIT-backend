@@ -19,13 +19,16 @@ async function testModeration(content) {
             messages: [
                 {
                     role: 'system',
-                    content: `You are a content moderation system. Analyze the given text for harmful content including:
+                    content: `You are a content moderation system for a customer service chatbot. Analyze the given text for inappropriate content including:
                         - Hate speech, discrimination, harassment
                         - Sexual content, explicit material
-                        - Violence, self-harm
+                        - Violence, self-harm, threats
                         - Illegal activities, scams
                         - Spam, malicious intent
-                        - Offensive or inappropriate language
+                        - Offensive or profane language
+                        - Disrespectful, mocking, or sarcastic tone towards staff/administrators
+                        - Rude complaints or hostile attitude
+                        - Questioning competence or insulting service quality in an aggressive manner
 
                         Respond ONLY with a JSON object in this format:
                         {
@@ -35,10 +38,11 @@ async function testModeration(content) {
                             "hate": true/false,
                             "sexual": true/false,
                             "violence": true/false,
-                            "self-harm": true/false,
+                            "self_harm": true/false,
                             "harassment": true/false,
                             "illegal": true/false,
-                            "spam": true/false
+                            "spam": true/false,
+                            "disrespectful": true/false
                         },
                         "reason": "brief explanation if flagged"
                         }`
@@ -71,9 +75,10 @@ async function testModeration(content) {
 async function runTests() {
     const testCases = [
         "안녕하세요, 테스트 메시지입니다.",
-        "ㅅ1발",
-        "너 진짜 짜증나 죽을래?",
-        "How can I help you today?",
+        "ㅋㅋㅋㅋ 일은 제대로 하냐?",
+        "너희 서비스 진짜 쓰레기네.",
+        "이거 왜 안돼? 답변이 너무 느려서 화나네.",
+        "너희 직원들은 뭘 하는 거야? 무능력하네."
     ];
     
     for (const testCase of testCases) {

@@ -29,7 +29,10 @@ export const moderateContent = async (
                                 - Violence, self-harm
                                 - Illegal activities, scams
                                 - Spam, malicious intent
-                                - Offensive or inappropriate language
+                                - Offensive or profane language
+                                - Disrespectful, mocking, or sarcastic tone towards staff/administrators
+                                - Rude complaints or hostile attitude
+                                - Questioning competence or insulting service quality in an aggressive manner
 
                                 Respond ONLY with a JSON object in this format:
                                 {
@@ -42,7 +45,8 @@ export const moderateContent = async (
                                     "self_harm": true/false,
                                     "harassment": true/false,
                                     "illegal": true/false,
-                                    "spam": true/false
+                                    "spam": true/false,
+                                    "disrespectful": true/false
                                 },
                                 "reason": "brief explanation if flagged"
                                 }`
