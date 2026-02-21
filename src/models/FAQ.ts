@@ -10,6 +10,7 @@ export type TFAQ = {
 	answer_en: string;
 	manager: string;
 	category_order: number;
+	subcategory_order: number;
 	created_by: number | null;
 	updated_by: number | null;
 };

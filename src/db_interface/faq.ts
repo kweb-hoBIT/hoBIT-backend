@@ -28,7 +28,8 @@ export async function fetchAllFaqs(conn: PoolConnection) {
 	try {
 		const [rows] = await conn.query<RowDataPacket[]>(
 			`
-SELECT * FROM faqs;
+SELECT * FROM faqs
+ORDER BY category_order, subcategory_order;
 	`
 		);
 
@@ -43,6 +44,7 @@ SELECT * FROM faqs;
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],
@@ -82,6 +84,7 @@ WHERE id IN (${placeholders});
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],
@@ -125,6 +128,7 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],
@@ -160,6 +164,7 @@ WHERE question_ko = ?;
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],
@@ -197,6 +202,7 @@ WHERE question_en = ?;
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],

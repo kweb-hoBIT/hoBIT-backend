@@ -7,7 +7,8 @@ export async function fetchAllSeniorFaqs(
 ): Promise<TSeniorFAQ[]> {
 	try {
 		const [rows] = await conn.query<RowDataPacket[]>(`
-      SELECT * FROM senior_faqs;
+      SELECT * FROM senior_faqs
+      ORDER BY category_order, subcategory_order, detailcategory_order;
     `);
 
 		const seniorFaqs: TSeniorFAQ[] = rows.map((row) => ({
@@ -21,6 +22,8 @@ export async function fetchAllSeniorFaqs(
 			answer_ko: row['answer_ko'],
 			answer_en: row['answer_en'],
 			category_order: row['category_order'],
+			subcategory_order: row['subcategory_order'],
+			detailcategory_order: row['detailcategory_order'],
 			manager: row['manager'],
 			created_by: row['created_by'],
 			updated_by: row['updated_by'],
@@ -54,6 +57,8 @@ export async function fetchSeniorFaqById(
 			answer_ko: row_data['answer_ko'],
 			answer_en: row_data['answer_en'],
 			category_order: row_data['category_order'],
+			subcategory_order: row_data['subcategory_order'],
+			detailcategory_order: row_data['detailcategory_order'],
 			manager: row_data['manager'],
 			created_by: row_data['created_by'],
 			updated_by: row_data['updated_by'],
