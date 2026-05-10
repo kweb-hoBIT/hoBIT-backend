@@ -26,7 +26,6 @@ export async function runServer() {
 			credentials: true,
 		})
 	);
-  app.use(logApi);
 
 	app.get('/', (_req, res) => {
 		res.send({ status: 'State' });
