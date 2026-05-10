@@ -8,14 +8,17 @@ export const logApi = async (
   _res: Response,
   next: NextFunction
 ) => {
-  const conn: PoolConnection = await Pool.getConnection();
+  let conn: PoolConnection | null = null;
   try {
+    conn = await Pool.getConnection();
     await insertApiLog(conn, {
       uri: req.originalUrl,
       method: req.method.toLowerCase(),
     });
+  } catch (err) {
+    console.error('[logApi] failed to write api log:', err);
   } finally {
-    conn.release();
+    if (conn) conn.release();
     next();
   }
 };
