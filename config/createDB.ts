@@ -145,6 +145,7 @@ const createRelatedFaqTable = async () => {
   const query = `
     CREATE TABLE IF NOT EXISTS related_faqs (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      faq_id INT, -- 아래 FOREIGN KEY가 쓰는 칸 (빠져 있어서 새 DB에서는 서버가 시작하지 못했음 · 관리자 백엔드·실제 테이블과 같게)
       related_faqs JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

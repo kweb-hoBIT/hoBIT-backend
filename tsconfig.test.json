@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noUnusedLocals": false, "noUnusedParameters": false, "noPropertyAccessFromIndexSignature": false, "noUncheckedIndexedAccess": false, "types": ["jest", "node"] },
+  "include": ["src", "tests"],
+  "exclude": ["dist", "node_modules"]
+}

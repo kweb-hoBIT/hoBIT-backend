@@ -107,6 +107,7 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
           SELECT faq_id, COUNT(*) AS count
           FROM question_logs
           WHERE created_at >= NOW() - INTERVAL 1 MONTH
+            AND faq_id IS NOT NULL  -- 직접 입력한 질문(faq_id NULL)은 집계에서 제외
           GROUP BY faq_id
           ORDER BY count DESC
           LIMIT ?
