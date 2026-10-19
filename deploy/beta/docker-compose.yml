@@ -1,0 +1,17 @@
+# 리뉴얼 베타용 Qdrant·Redis — 서버 안에서만 접속 (127.0.0.1), 메모리 상한
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.17.0  # 로컬과 같은 버전 (스냅샷 호환)
+    container_name: renewal-qdrant
+    restart: unless-stopped
+    ports: ["127.0.0.1:6333:6333"]
+    volumes: ["../../../data/qdrant:/qdrant/storage"]
+    mem_limit: 512m
+  redis:
+    image: redis:7-alpine
+    container_name: renewal-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "300", "10", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["../../../data/redis:/data"]
+    mem_limit: 192m

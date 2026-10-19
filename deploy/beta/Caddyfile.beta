@@ -1,0 +1,48 @@
+# /etc/caddy/Caddyfile 맨 아래에 붙임 — DNS(beta-api1·beta-api2 → 3.221.6.95)를 먼저 추가한 뒤에
+# (DNS 없이 붙이면 HTTPS 인증서 발급을 계속 재시도함)
+#
+# 점검 스위치: /etc/caddy/beta-off.flag 파일이 있으면 두 주소 모두 503 "점검 중" (Caddy 재시작 필요 없음)
+#   bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh off | on | status
+
+(beta_common) {
+    @bots path_regexp (?i)(^/wp-|\.php($|\?|/)|^/\.git/|^/\.env|^/\.aws/|^/0\.php|^/chosen)
+    respond @bots 404
+    @off file {
+        root /etc/caddy
+        try_files beta-off.flag
+    }
+    handle @off {
+        header Content-Type "application/json; charset=utf-8"
+        header Access-Control-Allow-Origin "*"
+        respond `{"maintenance":true,"message":"hoBIT 베타 서비스 점검 중이에요."}` 503
+    }
+}
+
+# hobit 리뉴얼 베타 — 챗봇 API + 실시간 채팅(웹소켓은 자동으로 전달됨)
+beta-api1.hobit.kr {
+    import beta_common
+    request_body max_size 12MB   # 채팅 첨부 10MB
+    handle {
+        reverse_proxy localhost:4100
+    }
+    log {
+        output file /var/log/caddy/beta-hobit.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+    }
+}
+
+# hobit-admin 리뉴얼 베타
+beta-api2.hobit.kr {
+    import beta_common
+    handle {
+        reverse_proxy localhost:5100
+    }
+    log {
+        output file /var/log/caddy/beta-admin-hobit.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+    }
+}
