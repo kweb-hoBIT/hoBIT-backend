@@ -53,6 +53,17 @@ bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh cancel         # 예약 �
 - 화면 두 개는 이 신호를 보고 점검 안내를 띄움 (서버 연결 실패와 구분)
 - 예약은 systemd 타이머 — 서버 재부팅 시 사라지므로 `status`로 확인
 
+## 데이터 최신화
+```bash
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh refresh-db         # 운영 DB를 다시 복사 (베타에서 바꾼 것은 사라짐 — 직전 베타 DB는 백업)
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl              # 홈페이지 다시 수집 → 정제 → 색인 (바뀐 것만)
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl boards       # 게시판만
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl-auto on      # 정기 수집 (3시간마다 게시판, 매일 04:30 전체)
+```
+- refresh-db 뒤에는 FAQ 검색 데이터도 자동으로 맞춤 (수집 없이 정제·색인만)
+- 서버에는 OCR 도구(tesseract)가 없어 이미지 속 글자 인식은 건너뜀 — 이전 결과는 그대로 씀
+- 기존 정기 작업(00:00 스냅샷·정리, 03:00 Rasa 업데이트)과 시간이 겹치지 않음
+
 ## 되돌리기
 - 리뉴얼만 끄기: `pm2 delete renewal-hobit-backend renewal-admin-backend renewal-rag && pm2 save`, `cd ~/hobit-renewal/hoBIT-backend/deploy/beta && sudo docker compose down`
 - Caddy: `sudo cp /etc/caddy/Caddyfile.bak-<시각> /etc/caddy/Caddyfile && sudo systemctl reload caddy`
