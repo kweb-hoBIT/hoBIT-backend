@@ -179,7 +179,7 @@ cat <<EOF
  1) Route 53 에 A 레코드 2개 추가: beta-api1.hobit.kr, beta-api2.hobit.kr → 3.221.6.95
  2) DNS 가 잡히면:  sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$TS
                    cat $K/Caddyfile.beta | sudo tee -a /etc/caddy/Caddyfile >/dev/null
-                   sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+                   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy   # 검사는 caddy 사용자로 (root로 하면 새 로그 파일이 root 소유가 되어 reload 실패)
  3) Vercel 에 화면 2개 ($K/README.md)
  가입 키 확인:  grep -E '^(MANAGER|SENIOR|DEVELOPER)_KEY=' $R/hoBIT-admin-backend/.env
 EOF
