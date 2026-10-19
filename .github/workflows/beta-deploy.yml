@@ -1,0 +1,50 @@
+# 베타 자동 배포 — renewal 브랜치에 push하면 테스트 후 EC2 베타(~/hobit-renewal)에 반영
+# 운영(main → ~/hobit)은 actual-deploy.yml, 이 파일은 운영을 건드리지 않음
+name: beta-deploy
+
+on:
+  push:
+    branches: [renewal]
+  workflow_dispatch:
+
+concurrency:
+  group: beta-deploy-hoBIT-backend
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 타입 검사
+        run: npx tsc --noEmit -p .
+      - name: 단위 테스트
+        run: npx jest tests/unit
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 준비
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > ~/.ssh/id_ec2
+          chmod 600 ~/.ssh/id_ec2
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 베타 서버에 반영
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o ServerAliveInterval=30 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'bash -s' <<'REMOTE'
+          set -e
+          D="$HOME/hobit-renewal/hoBIT-backend"
+          if [ ! -d "$D/.git" ]; then echo "베타 서버가 아직 준비되지 않음 (server-setup.sh 전) — 건너뜀"; exit 0; fi
+          OLD=$(git -C "$D" rev-parse HEAD)
+          git -C "$D" fetch -q origin renewal
+          git -C "$D" reset -q --hard origin/renewal
+          bash "$HOME/hobit-renewal/hoBIT-backend/deploy/beta/update.sh" hoBIT-backend "$OLD"
+          REMOTE
