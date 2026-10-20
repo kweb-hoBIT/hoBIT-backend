@@ -106,7 +106,7 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 		return res.json({ ok: true, token: r.token, email: r.email, expiresIn: STUDENT_TOKEN_TTL_SEC });
 	});
 
-	// 개발용: 메일 인증 생략 — 설정이 꺼져 있으면(기본·production) 없는 주소처럼 404
+	// 메일 인증 생략 — 설정이 꺼져 있으면(기본) 없는 주소처럼 404
 	route.post('/email/dev-login', express.json({ limit: '4kb' }), async (req, res) => {
 		if (!service.config.skipEmailVerify) return res.status(404).json({ ok: false, error: 'not_found' });
 		const r = await service.devLogin(String(req.body?.email ?? ''));

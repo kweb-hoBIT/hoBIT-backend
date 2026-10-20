@@ -13,6 +13,10 @@
 #   ... beta.sh crawl [all|boards|static]   # 홈페이지 공지·페이지 다시 수집 → 정제 → 색인 (기본 all, 바뀐 것만, OpenAI 비용 소액)
 #   ... beta.sh crawl-auto on|off    # 정기 수집: 3시간마다 게시판(매시 20분), 매일 04:30 전체 — crontab
 #
+# 채팅
+#   ... beta.sh email-verify off     # 학교 메일 코드 인증 없이 바로 채팅 (시연용 — 누구나 다른 학생 메일로 들어올 수 있음)
+#   ... beta.sh email-verify on      # 다시 메일 인증 (기본)
+#
 # 예약은 systemd 타이머 — 서버가 재부팅되면 예약이 사라지므로 status로 확인
 set -euo pipefail
 
@@ -23,6 +27,7 @@ APPS="renewal-hobit-backend renewal-admin-backend renewal-rag"
 SELF="$(readlink -f "$0")"
 PROD_ENV="$HOME/hobit/hoBIT-admin-backend/.env"
 CRON_TAG="# hobit-renewal-crawl"
+CHAT_ENV="$R/hoBIT-backend/.env"
 
 load_pm2() { export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" >/dev/null; nvm use 20 >/dev/null; }
 
@@ -56,6 +61,7 @@ status() {
   systemctl list-timers --all 2>/dev/null | grep -E "beta-(on|off)" | awk '{print "   예약:", $0}' || true
   free -h | sed -n 2p | awk '{print "   메모리:", $3, "/", $2}'
   crontab -l 2>/dev/null | grep -q "$CRON_TAG" && echo "   정기 수집: 켜짐" || echo "   정기 수집: 꺼짐"
+  [ "$(val CHAT_SKIP_EMAIL_VERIFY "$CHAT_ENV")" = "1" ] && echo "   채팅 메일 인증: 꺼짐 (코드 없이 입장)" || echo "   채팅 메일 인증: 켜짐"
   ls -t "$R/hoBIT-rag/logs"/pipeline_*.log 2>/dev/null | head -1 | xargs -r -I{} sh -c 'echo "   마지막 수집: $(basename {} .log | sed s/pipeline_//)"'
 }
 
@@ -101,6 +107,15 @@ crawl_auto() {
   fi
 }
 
+email_verify() { # $1 = on|off
+  local v; [ "$1" = "off" ] && v=1 || v=0
+  if grep -q '^CHAT_SKIP_EMAIL_VERIFY=' "$CHAT_ENV"; then sed -i "s/^CHAT_SKIP_EMAIL_VERIFY=.*/CHAT_SKIP_EMAIL_VERIFY=$v/" "$CHAT_ENV"
+  else echo "CHAT_SKIP_EMAIL_VERIFY=$v" >> "$CHAT_ENV"; fi
+  if [ ! -f "$FLAG" ]; then load_pm2; pm2 restart renewal-hobit-backend --update-env >/dev/null; fi
+  if [ "$v" = 1 ]; then echo "채팅 메일 인증 꺼짐 — 학교 메일 주소만 입력하면 바로 입장 (시연이 끝나면 email-verify on)"
+  else echo "채팅 메일 인증 켜짐 — 학교 메일로 받은 코드를 입력해야 입장"; fi
+}
+
 case "${1:-status}" in
   on|off) if [ "${2:-}" = "--in" ]; then schedule "$1" "${3:?예: 5d}"; else "$1"; fi ;;
   status) status ;;
@@ -108,5 +123,6 @@ case "${1:-status}" in
   refresh-db) refresh_db ;;
   crawl) shift; crawl "$@" ;;
   crawl-auto) crawl_auto "${2:?on 또는 off}" ;;
-  *) sed -n 2,18p "$SELF" ;;
+  email-verify) case "${2:-}" in on|off) email_verify "$2" ;; *) echo "email-verify on 또는 off"; exit 1 ;; esac ;;
+  *) sed -n 2,20p "$SELF" ;;
 esac

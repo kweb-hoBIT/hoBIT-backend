@@ -10,17 +10,19 @@ const config = {
 };
 const t = makeTokens(config);
 
-describe('개발용 메일 인증 생략', () => {
+describe('메일 인증 생략 스위치', () => {
 	const saved = { ...process.env };
 	afterEach(() => {
 		process.env = { ...saved };
 	});
-	test('production에서는 켜도 꺼짐', () => {
-		process.env.CHAT_SKIP_EMAIL_VERIFY = '1';
+	test('기본은 인증함, 1로 명시했을 때만 생략 (production 포함)', () => {
 		process.env.NODE_ENV = 'production';
 		process.env.CHAT_STUDENT_SECRET = process.env.CHAT_AGENT_SECRET = process.env.CHAT_FILE_SECRET = 'x';
+		delete process.env.CHAT_SKIP_EMAIL_VERIFY;
 		expect(loadChatConfig().skipEmailVerify).toBe(false);
-		process.env.NODE_ENV = 'development';
+		process.env.CHAT_SKIP_EMAIL_VERIFY = '0';
+		expect(loadChatConfig().skipEmailVerify).toBe(false);
+		process.env.CHAT_SKIP_EMAIL_VERIFY = '1';
 		expect(loadChatConfig().skipEmailVerify).toBe(true);
 	});
 });

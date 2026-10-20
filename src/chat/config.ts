@@ -18,7 +18,7 @@ export type ChatConfig = {
 	allowedOrigins: (string | RegExp)[];
 	llmModeration: boolean;
 	nowOverride: string | null; // 개발·E2E에서 시각 고정 (production에서는 무시)
-	skipEmailVerify: boolean; // 개발용: 학교 메일 코드 인증 생략 (production에서는 항상 false)
+	skipEmailVerify: boolean; // 학교 메일 코드 인증 생략 — CHAT_SKIP_EMAIL_VERIFY=1일 때만 (베타 시연용 스위치: beta.sh email-verify off)
 	production: boolean;
 };
 
@@ -73,7 +73,7 @@ export function loadChatConfig(): ChatConfig {
 		// 애매한 메시지만 LLM으로 (비꼼·무례 판단) — 키가 있으면 기본으로 켬, CHAT_LLM_MODERATION=0이면 끔
 		llmModeration: env('CHAT_LLM_MODERATION') !== '0',
 		nowOverride: production ? null : (env('CHAT_NOW') ?? null),
-		skipEmailVerify: !production && env('CHAT_SKIP_EMAIL_VERIFY') === '1',
+		skipEmailVerify: env('CHAT_SKIP_EMAIL_VERIFY') === '1',
 		production,
 	};
 }

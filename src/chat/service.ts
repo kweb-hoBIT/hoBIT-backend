@@ -225,7 +225,7 @@ export class ChatService {
 		return { ok: true, token: this.tokens.signStudent(email), email };
 	}
 
-	/** 개발용: 코드 없이 학생 토큰 (CHAT_SKIP_EMAIL_VERIFY=1, production 아님일 때만 라우트가 열림) */
+	/** 코드 없이 학생 토큰 (CHAT_SKIP_EMAIL_VERIFY=1일 때만 라우트가 열림 — 누구나 그 메일인 척할 수 있으니 시연용으로만) */
 	async devLogin(rawEmail: string): Promise<{ ok: true; token: string; email: string } | { ok: false; error: 'invalid_email' | 'blocked' }> {
 		const email = normalizeEmail(rawEmail);
 		if (!this.validEmail(email)) return { ok: false, error: 'invalid_email' };

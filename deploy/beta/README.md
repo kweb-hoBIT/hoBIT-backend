@@ -64,6 +64,14 @@ bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl-auto on      # 정�
 - 서버에는 OCR 도구(tesseract)가 없어 이미지 속 글자 인식은 건너뜀 — 이전 결과는 그대로 씀
 - 기존 정기 작업(00:00 스냅샷·정리, 03:00 Rasa 업데이트)과 시간이 겹치지 않음
 
+## 채팅 메일 인증 스위치
+```bash
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh email-verify off   # 학교 메일 주소만 입력하면 코드 없이 바로 채팅
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh email-verify on    # 다시 코드 인증 (기본)
+```
+- 끄면 누구나 다른 학생의 메일 주소로 들어와 그 학생의 진행 중인 채팅을 볼 수 있음 — 팀 테스트·시연 때만 잠깐
+- 챗봇 서버만 몇 초 재시작, 현재 상태는 `beta.sh status`
+
 ## 되돌리기
 - 리뉴얼만 끄기: `pm2 delete renewal-hobit-backend renewal-admin-backend renewal-rag && pm2 save`, `cd ~/hobit-renewal/hoBIT-backend/deploy/beta && sudo docker compose down`
 - Caddy: `sudo cp /etc/caddy/Caddyfile.bak-<시각> /etc/caddy/Caddyfile && sudo systemctl reload caddy`
