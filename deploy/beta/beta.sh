@@ -90,7 +90,11 @@ crawl() { # $1 = all|boards|static, 나머지는 run_pipeline.py 옵션
   mkdir -p "$R/hoBIT-rag/logs"
   local log="$R/hoBIT-rag/logs/pipeline_$(date +%Y%m%d_%H%M%S).log"
   echo "수집 시작 ($scope) — 기록: $log"
-  ( cd "$R/hoBIT-rag" && venv/bin/python scripts/run_pipeline.py --scope "$scope" $ocr "$@" ) 2>&1 | tee "$log" | grep -E "INFO|오류|ERROR|documents" || true
+  if [ -t 1 ]; then   # 터미널에서 직접 실행: 진행 바(tqdm)까지 전부 실시간으로
+    ( cd "$R/hoBIT-rag" && PYTHONUNBUFFERED=1 COLUMNS="$(tput cols 2>/dev/null || echo 100)" venv/bin/python scripts/run_pipeline.py --scope "$scope" $ocr "$@" ) 2>&1 | tee "$log" || true
+  else                # 정기 수집(cron)·백그라운드: 요약 줄만
+    ( cd "$R/hoBIT-rag" && venv/bin/python scripts/run_pipeline.py --scope "$scope" $ocr "$@" ) 2>&1 | tee "$log" | grep -E "INFO|오류|ERROR|documents" || true
+  fi
   find "$R/hoBIT-rag/logs" -maxdepth 1 -name "pipeline_*.log" -mtime +30 -delete
 }
 
