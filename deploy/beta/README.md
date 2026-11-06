@@ -15,7 +15,7 @@ DB: `hobit_renewal` (운영 `hobit` 복사본), `hobit_renewal_chat` (채팅, �
 ## 브랜치와 자동 배포
 | 브랜치 | push하면 |
 |---|---|
-| `renewal` | **베타**에 자동 반영 (`.github/workflows/beta-deploy.yml`) — 테스트 → 서버에서 코드 받기 → 빌드 → 그 서버만 재시작 |
+| `renewal` | **베타**에 자동 반영 (`.github/workflows/beta-deploy.yml`) — 테스트 → 서버에서 코드 받기 → 빌드 → 그 서버만 재시작 (응답이 없으면 이전 버전으로 자동 되돌림) |
 | `main` | **운영**에 자동 반영 (`actual-deploy.yml`, 기존) — 정식 전환 때 `renewal`을 합침 |
 
 - 백엔드 3개(backend · admin-backend · rag): 서버 `~/hobit-renewal/<저장소>`에서 `git reset --hard origin/renewal` → `update.sh` (패키지 목록이 바뀐 때만 설치)
@@ -58,8 +58,11 @@ bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh cancel         # 예약 �
 bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh refresh-db         # 운영 DB를 다시 복사 (베타에서 바꾼 것은 사라짐 — 직전 베타 DB는 백업)
 bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl              # 홈페이지 다시 수집 → 정제 → 색인 (바뀐 것만)
 bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl boards       # 게시판만
-bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl-auto on      # 정기 수집 (3시간마다 게시판, 매일 04:30 전체)
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh crawl-auto on      # 정기 수집 (3시간마다 게시판, 매일 04:30 전체, 일요일 05:40 추천 문장 점검)
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh rec-check          # 추천 문장 점검 지금 한 번 (답 못 하는 예시 질문은 추천에서 뺌)
+bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh alert-email 주소   # 수집·점검 실패 시 메일 (같은 문제는 하루 한 번) · off · test
 ```
+- 수집 결과(정상 / 문제 목록)는 관리자 홈 맨 위에도 표시됨 (RAG `/pipeline/status`)
 - refresh-db 뒤에는 FAQ 검색 데이터도 자동으로 맞춤 (수집 없이 정제·색인만)
 - 서버에는 OCR 도구(tesseract)가 없어 이미지 속 글자 인식은 건너뜀 — 이전 결과는 그대로 씀
 - 기존 정기 작업(00:00 스냅샷·정리, 03:00 Rasa 업데이트)과 시간이 겹치지 않음

@@ -15,7 +15,7 @@ module.exports = {
       name: 'renewal-admin-backend', // 5100
       cwd: `${R}/hoBIT-admin-backend`,
       script: 'dist/src/server.js',
-      env: { NODE_ENV: 'production' },
+      env: { NODE_ENV: 'production', RAG_URL: 'http://127.0.0.1:8100' }, // 대시보드의 데이터 수집 상태
       max_memory_restart: '400M',
     },
     {

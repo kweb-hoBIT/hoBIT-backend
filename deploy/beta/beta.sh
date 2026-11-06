@@ -11,7 +11,9 @@
 # 데이터
 #   ... beta.sh refresh-db           # 운영 DB(hobit)를 다시 복사해 베타 DB(hobit_renewal)를 최신으로 (베타에서 고친 FAQ·가입 등은 사라짐 — 지우기 전에 백업)
 #   ... beta.sh crawl [all|boards|static]   # 홈페이지 공지·페이지 다시 수집 → 정제 → 색인 (기본 all, 바뀐 것만, OpenAI 비용 소액)
-#   ... beta.sh crawl-auto on|off    # 정기 수집: 3시간마다 게시판(매시 20분), 매일 04:30 전체 — crontab
+#   ... beta.sh crawl-auto on|off    # 정기 수집: 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 — crontab
+#   ... beta.sh rec-check            # 추천 문장 점검: 답 못 하는 예시 질문은 추천에서 뺌 (약 210개 × 2원)
+#   ... beta.sh alert-email <주소>   # 수집·점검이 실패하면 이 주소로 메일 (off = 끄기, test = 시험 메일)
 #
 # 채팅
 #   ... beta.sh email-verify off     # 학교 메일 코드 인증 없이 바로 채팅 (시연용 — 누구나 다른 학생 메일로 들어올 수 있음)
@@ -28,6 +30,9 @@ SELF="$(readlink -f "$0")"
 PROD_ENV="$HOME/hobit/hoBIT-admin-backend/.env"
 CRON_TAG="# hobit-renewal-crawl"
 CHAT_ENV="$R/hoBIT-backend/.env"
+ALERT_FILE="$R/alert-email"        # 실패 알림 받을 주소 (한 줄)
+ALERT_STATE="$R/.last-alert"       # 같은 문제는 하루에 한 번만 알림
+LATEST="$R/hoBIT-rag/logs/pipeline/latest.json"
 
 load_pm2() { export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" >/dev/null; nvm use 20 >/dev/null; }
 
@@ -63,6 +68,31 @@ status() {
   crontab -l 2>/dev/null | grep -q "$CRON_TAG" && echo "   정기 수집: 켜짐" || echo "   정기 수집: 꺼짐"
   [ "$(val CHAT_SKIP_EMAIL_VERIFY "$CHAT_ENV")" = "1" ] && echo "   채팅 메일 인증: 꺼짐 (코드 없이 입장)" || echo "   채팅 메일 인증: 켜짐"
   ls -t "$R/hoBIT-rag/logs"/pipeline_*.log 2>/dev/null | head -1 | xargs -r -I{} sh -c 'echo "   마지막 수집: $(basename {} .log | sed s/pipeline_//)"'
+  [ -f "$LATEST" ] && python3 -c "import json;d=json.load(open('$LATEST'));print('   수집 결과:', '정상' if d['ok'] else '문제 — ' + ' / '.join(d['problems']))"
+  ls -t "$R/hoBIT-rag/logs"/rec_check_*.log 2>/dev/null | head -1 | xargs -r -I{} sh -c 'echo "   마지막 추천 점검: $(basename {} .log | sed s/rec_check_//) — $(tail -n 50 {} | grep -m1 "^답함" || echo 결과 없음)"'
+  [ -s "$ALERT_FILE" ] && echo "   실패 알림: $(cat "$ALERT_FILE")" || echo "   실패 알림: 꺼짐 (beta.sh alert-email <주소>)"
+}
+
+# 실패 알림 메일 — 주소가 없으면 건너뜀. 같은 내용은 24시간에 한 번만 (3시간마다 같은 메일이 오지 않게)
+alert() { # $1 = 제목, $2 = 본문
+  [ -s "$ALERT_FILE" ] || return 0
+  local to sig now last_sig last_at
+  to="$(head -1 "$ALERT_FILE")"; sig="$(printf '%s' "$1$2" | md5sum | cut -c1-12)"; now="$(date +%s)"
+  if [ -f "$ALERT_STATE" ]; then read -r last_sig last_at < "$ALERT_STATE" || true; fi
+  if [ "${last_sig:-}" = "$sig" ] && [ $(( now - ${last_at:-0} )) -lt 86400 ]; then return 0; fi
+  printf 'To: %s\nSubject: =?UTF-8?B?%s?=\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\n\n%s\n\n— hoBIT 베타 서버 (%s)\n' \
+    "$to" "$(printf '[hoBIT 베타] %s' "$1" | base64 -w0)" "$2" "$(date '+%Y-%m-%d %H:%M')" | msmtp "$to" \
+    && echo "$sig $now" > "$ALERT_STATE" || echo "알림 메일 보내기 실패 (~/.msmtprc 확인)"
+}
+
+alert_email() { # $1 = 주소 | off | test | (없음 = 지금 설정 보기)
+  case "${1:-}" in
+    "") [ -s "$ALERT_FILE" ] && echo "실패 알림: $(cat "$ALERT_FILE")" || echo "실패 알림 꺼짐" ;;
+    off) rm -f "$ALERT_FILE" "$ALERT_STATE"; echo "실패 알림 꺼짐" ;;
+    test) rm -f "$ALERT_STATE"; alert "알림 시험" "실패 알림이 이 주소로 온다는 시험 메일이에요."; echo "시험 메일 보냄 → $(cat "$ALERT_FILE" 2>/dev/null)" ;;
+    *@*) echo "$1" > "$ALERT_FILE"; chmod 600 "$ALERT_FILE"; echo "실패 알림 → $1 (시험: beta.sh alert-email test)" ;;
+    *) echo "beta.sh alert-email <메일 주소> | off | test"; exit 1 ;;
+  esac
 }
 
 val() { grep -E "^$1=" "$2" | head -1 | cut -d= -f2- | tr -d '\r'; }   # .env 값 (출력하지 않음)
@@ -90,21 +120,57 @@ crawl() { # $1 = all|boards|static, 나머지는 run_pipeline.py 옵션
   mkdir -p "$R/hoBIT-rag/logs"
   local log="$R/hoBIT-rag/logs/pipeline_$(date +%Y%m%d_%H%M%S).log"
   echo "수집 시작 ($scope) — 기록: $log"
+  local started; started="$(date +%Y-%m-%dT%H:%M:%S)"
   if [ -t 1 ]; then   # 터미널에서 직접 실행: 진행 바(tqdm)까지 전부 실시간으로
     ( cd "$R/hoBIT-rag" && PYTHONUNBUFFERED=1 COLUMNS="$(tput cols 2>/dev/null || echo 100)" venv/bin/python scripts/run_pipeline.py --scope "$scope" $ocr "$@" ) 2>&1 | tee "$log" || true
   else                # 정기 수집(cron)·백그라운드: 요약 줄만
     ( cd "$R/hoBIT-rag" && venv/bin/python scripts/run_pipeline.py --scope "$scope" $ocr "$@" ) 2>&1 | tee "$log" | grep -E "INFO|오류|ERROR|documents" || true
   fi
   find "$R/hoBIT-rag/logs" -maxdepth 1 -name "pipeline_*.log" -mtime +30 -delete
+  # 결과 확인 → 문제가 있으면 알림 (실패해도 다음 단계로 넘어가는 단계가 많아 로그만으로는 놓치기 쉬움)
+  local result
+  result="$(python3 - "$LATEST" "$started" <<'PY' 2>/dev/null || echo "결과 파일을 읽지 못함"
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("수집이 끝나지 않았어요 (요약이 기록되지 않음)"); sys.exit()
+if d.get("finished_at", "") < sys.argv[2]:
+    print("수집이 끝나지 않았어요 (요약이 기록되지 않음)")
+elif not d.get("ok"):
+    print("\n".join("- " + p for p in d.get("problems", [])))
+PY
+)"
+  if [ -n "$result" ]; then
+    echo "문제: $result"
+    alert "데이터 수집 문제 ($scope)" "$result
+
+기록: $log
+마지막 줄:
+$(tail -c 3000 "$log" | tr '\r' '\n' | grep -vE 'it/s|s/it' | tail -n 15)"
+  fi
+}
+
+rec_check() {
+  if [ -f "$FLAG" ]; then echo "베타가 꺼져 있어 건너뜀"; return 0; fi
+  mkdir -p "$R/hoBIT-rag/logs"
+  local log="$R/hoBIT-rag/logs/rec_check_$(date +%Y%m%d_%H%M%S).log"
+  echo "추천 문장 점검 시작 — 기록: $log"
+  if ! ( cd "$R/hoBIT-rag" && RAG_URL=http://127.0.0.1:8100 PYTHONUNBUFFERED=1 venv/bin/python scripts/check_rec_items.py ) 2>&1 | tee "$log"; then
+    alert "추천 문장 점검 실패" "기록: $log
+$(tail -n 15 "$log")"
+  fi
+  find "$R/hoBIT-rag/logs" -maxdepth 1 -name "rec_check_*.log" -mtime +60 -delete
 }
 
 crawl_auto() {
   local cur; cur="$(crontab -l 2>/dev/null | grep -v "$CRON_TAG" || true)"
   if [ "$1" = "on" ]; then
-    printf '%s\n%s\n%s\n' "$cur" \
+    printf '%s\n%s\n%s\n%s\n' "$cur" \
       "20 */3 * * * /bin/bash $SELF crawl boards >/dev/null 2>&1 $CRON_TAG" \
-      "30 4 * * * /bin/bash $SELF crawl all >/dev/null 2>&1 $CRON_TAG" | sed '/^$/d' | crontab -
-    echo "정기 수집 켜짐: 3시간마다 게시판(매시 20분), 매일 04:30 전체 (기존 자정 스냅샷·03시 Rasa 업데이트와 안 겹침)"
+      "30 4 * * * /bin/bash $SELF crawl all >/dev/null 2>&1 $CRON_TAG" \
+      "40 5 * * 0 /bin/bash $SELF rec-check >/dev/null 2>&1 $CRON_TAG" | sed '/^$/d' | crontab -
+    echo "정기 수집 켜짐: 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 (기존 자정 스냅샷·03시 Rasa 업데이트와 안 겹침)"
   else
     printf '%s\n' "$cur" | sed '/^$/d' | crontab -
     echo "정기 수집 꺼짐"
@@ -128,5 +194,7 @@ case "${1:-status}" in
   crawl) shift; crawl "$@" ;;
   crawl-auto) crawl_auto "${2:?on 또는 off}" ;;
   email-verify) case "${2:-}" in on|off) email_verify "$2" ;; *) echo "email-verify on 또는 off"; exit 1 ;; esac ;;
-  *) sed -n 2,20p "$SELF" ;;
+  rec-check) rec_check ;;
+  alert-email) alert_email "${2:-}" ;;
+  *) sed -n 2,22p "$SELF" ;;
 esac
