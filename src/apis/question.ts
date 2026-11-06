@@ -633,15 +633,22 @@ function errorResponse(question: string, language: QuestionRequest['language']):
 /**
  * 직접 입력한 질문을 question_logs에 기록 (응답을 보낸 뒤 비동기 — 요청 처리 중에는 DB 연결을 잡지 않음).
  * 인기 질문 집계·추천에 사용. FAQ 정확 일치 경로를 없앴으므로 faq_id는 NULL.
+ * answer_status·cited_faq_ids: 관리자 대시보드의 "답을 못 찾은 질문"·"많이 쓰인 FAQ" 집계용
  */
 // 시나리오 테스트 등에서 질문 로그를 남기지 않을 때 (QUESTION_LOG_DISABLED=1)
 const QUESTION_LOG_DISABLED = process.env['QUESTION_LOG_DISABLED'] === '1';
 
-function logQuestion(question: string, language: QuestionRequest['language']) {
+function logQuestion(question: string, language: QuestionRequest['language'], ragData: any) {
 	if (QUESTION_LOG_DISABLED) return;
-	Pool.query('INSERT INTO question_logs (faq_id, user_question, language) VALUES (NULL, ?, ?)', [
+	const status = ragData?.not_found ? 'not_found' : 'answered';
+	// 행정실 FAQ만 (선배 FAQ는 id 공간이 달라 faqs와 섞이지 않게 제외)
+	const faqIds = Array.from(new Set(((ragData?.official_faqs ?? []) as OfficialFaq[])
+		.filter((f) => f.source === 'mysql_faq').map((f) => f.row_id))).join(',').slice(0, 255) || null;
+	Pool.query('INSERT INTO question_logs (faq_id, user_question, language, answer_status, cited_faq_ids) VALUES (NULL, ?, ?, ?, ?)', [
 		question.slice(0, 300),
 		language,
+		status,
+		faqIds,
 	]).catch((err) => console.warn('[Question API] 질문 로그 기록 실패:', err?.message ?? err));
 }
 
@@ -691,7 +698,7 @@ export const question = async (
 			{ headers: ragHeaders(sessionId) }
 		);
 		res.status(200).json(buildRagResponse(ragRes.data, question, outcome.correctedQuestion, language));
-		logQuestion(question, language);
+		logQuestion(question, language, ragRes.data);
 	} catch (error: any) {
 		console.error('[Question API] 오류:', error);
 		res.status(200).json(errorResponse(question, language));
@@ -736,6 +743,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 
 		let buffer = '';
 		let finished = false;
+		let doneData: any = null;
 		for await (const chunk of ragRes.data as AsyncIterable<Buffer>) {
 			buffer += chunk.toString('utf8');
 			let sep: number;
@@ -748,7 +756,8 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 				if (event === 'delta' || event === 'meta') {
 					res.write(`event: ${event}\ndata: ${data}\n\n`);  // 그대로 전달
 				} else if (event === 'done') {
-					send('done', buildRagResponse(JSON.parse(data), question, outcome.correctedQuestion, language));
+					doneData = JSON.parse(data);
+					send('done', buildRagResponse(doneData, question, outcome.correctedQuestion, language));
 					finished = true;
 				} else if (event === 'error') {
 					throw new Error(`RAG stream error: ${data}`);
@@ -756,7 +765,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			}
 		}
 		if (!finished) throw new Error('RAG stream ended without done');
-		logQuestion(question, language);
+		logQuestion(question, language, doneData);
 	} catch (error: any) {
 		if (!abort.signal.aborted) {
 			console.error('[Question Stream API] 오류:', error?.message ?? error);

@@ -202,7 +202,30 @@ const createTables = async () => {
   await createApiLogTable();
 };
 
+// 나중에 추가한 칸 — 이미 만들어진 question_logs에도 붙임 (MySQL·MariaDB 모두 되도록 information_schema로 확인)
+const QUESTION_LOG_COLUMNS: [column: string, ddl: string][] = [
+  ['ismatched', 'INT DEFAULT 0'],              // 밤 12시 작업이 이미 살펴본 질문 = 1
+  ['answer_status', 'VARCHAR(16) NULL'],       // answered | not_found (직접 입력한 질문의 RAG 답변 결과)
+  ['cited_faq_ids', 'VARCHAR(255) NULL'],      // 답변이 근거로 인용한 행정실 FAQ id (쉼표 구분)
+];
+
+const addQuestionLogColumns = async () => {
+  const connection = await createConnection();
+  try {
+    for (const [column, ddl] of QUESTION_LOG_COLUMNS) {
+      const [rows]: any = await connection.query(
+        `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'question_logs' AND column_name = ?`,
+        [column]
+      );
+      if (!rows.length) await connection.query(`ALTER TABLE question_logs ADD COLUMN \`${column}\` ${ddl}`);
+    }
+  } finally {
+    await connection.end();
+  }
+};
+
 export const initializeDatabase = async () => {
   await createDB();
   await createTables();
+  await addQuestionLogColumns();
 };
