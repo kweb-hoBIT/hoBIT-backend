@@ -217,6 +217,10 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ['question_logs', 'classified_by', 'VARCHAR(8) NULL'],        // rule | llm — 질문 종류를 규칙으로 정했는지 (AI 분류 비율)
   ['question_logs', 'topic', 'VARCHAR(32) NULL'],               // 주제 지도로 알아본 주제 (hoBIT-rag/src/utils/topics.py)
   ['user_feedbacks', 'question_log_id', 'INT NULL'],            // 👎를 누른 답변 (question_logs.id)
+  // 관리자 '답변 확인' 화면 — 👎·못 찾음·숫자를 뺀 답변을 확인한 결과
+  ['question_logs', 'review_status', 'VARCHAR(16) NULL'],       // NULL = 확인 전 | done = 처리함 | ignored = 문제 없음
+  ['question_logs', 'review_cause', 'VARCHAR(32) NULL'],        // no_data | outdated | wrong_answer | bad_search | ok
+  ['question_logs', 'reviewed_at', 'TIMESTAMP NULL'],
 ];
 
 const addColumns = async () => {
