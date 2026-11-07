@@ -11,7 +11,8 @@
 # 데이터
 #   ... beta.sh refresh-db           # 운영 DB(hobit)를 다시 복사해 베타 DB(hobit_renewal)를 최신으로 (베타에서 고친 FAQ·가입 등은 사라짐 — 지우기 전에 백업)
 #   ... beta.sh crawl [all|boards|static]   # 홈페이지 공지·페이지 다시 수집 → 정제 → 색인 (기본 all, 바뀐 것만, OpenAI 비용 소액)
-#   ... beta.sh crawl-auto on|off    # 정기 수집: 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 — crontab
+#   ... beta.sh crawl-auto on|off    # 정기 수집: 15분마다 새 공지 확인, 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 — crontab
+#   ... beta.sh crawl-quick          # 공지·장학 게시판 목록 첫 페이지만 보고 새 글이 있으면 게시판 수집 (15분마다 자동)
 #   ... beta.sh rec-check            # 추천 문장 점검: 답 못 하는 예시 질문은 추천에서 뺌 (약 210개 × 2원)
 #   ... beta.sh alert-email <주소>   # 수집·점검이 실패하면 이 주소로 메일 (off = 끄기, test = 시험 메일)
 #   ... beta.sh db-backup now|on|off # DB 백업: 지금 한 번 / 매일 03:40 자동 켜기·끄기 (운영 hobit + 베타 hobit_renewal, 14일 보관)
@@ -147,6 +148,15 @@ db_backup_auto() {
   fi
 }
 
+crawl_quick() { # 새 공지가 있을 때만 게시판 수집 — 목록 4장만 보므로 학교 서버·비용 부담 거의 없음
+  local lock="$R/hoBIT-rag/datasets/.pipeline.lock"
+  # 다른 수집이 돌고 있으면 건너뜀 (겹치면 파이프라인이 바로 끝나 '수집 실패' 알림이 잘못 감)
+  if [ -f "$lock" ] && ! flock -n "$lock" true; then echo "다른 수집이 실행 중 — 건너뜀"; return 0; fi
+  local code=0
+  ( cd "$R/hoBIT-rag" && venv/bin/python scripts/check_new_notices.py ) || code=$?
+  if [ "$code" = 10 ]; then crawl boards; elif [ "$code" != 0 ]; then echo "새 공지 확인 실패 (다음 확인 때 다시)"; fi
+}
+
 crawl() { # $1 = all|boards|static, 나머지는 run_pipeline.py 옵션
   local scope="${1:-all}"; shift || true
   local ocr="--no-ocr"; command -v tesseract >/dev/null && ocr=""   # 서버에 OCR 도구가 없으면 이미지 글자 인식은 건너뜀 (이전 결과 유지)
@@ -199,11 +209,12 @@ $(tail -n 15 "$log")"
 crawl_auto() {
   local cur; cur="$(crontab -l 2>/dev/null | grep -v "$CRON_TAG" || true)"
   if [ "$1" = "on" ]; then
-    printf '%s\n%s\n%s\n%s\n' "$cur" \
+    printf '%s\n%s\n%s\n%s\n%s\n' "$cur" \
+      "*/15 * * * * /bin/bash $SELF crawl-quick >/dev/null 2>&1 $CRON_TAG" \
       "20 */3 * * * /bin/bash $SELF crawl boards >/dev/null 2>&1 $CRON_TAG" \
       "30 4 * * * /bin/bash $SELF crawl all >/dev/null 2>&1 $CRON_TAG" \
       "40 5 * * 0 /bin/bash $SELF rec-check >/dev/null 2>&1 $CRON_TAG" | sed '/^$/d' | crontab -
-    echo "정기 수집 켜짐: 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 (기존 자정 스냅샷·03시 Rasa 업데이트와 안 겹침)"
+    echo "정기 수집 켜짐: 15분마다 새 공지 확인(새 글이 있을 때만 수집), 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 (기존 자정 스냅샷·03시 Rasa 업데이트와 안 겹침)"
   else
     printf '%s\n' "$cur" | sed '/^$/d' | crontab -
     echo "정기 수집 꺼짐"
@@ -225,6 +236,7 @@ case "${1:-status}" in
   cancel) sudo systemctl stop beta-on.timer beta-off.timer >/dev/null 2>&1 || true; echo "예약 취소됨" ;;
   refresh-db) refresh_db ;;
   crawl) shift; crawl "$@" ;;
+  crawl-quick) crawl_quick ;;
   crawl-auto) crawl_auto "${2:?on 또는 off}" ;;
   db-backup) case "${2:-}" in now) db_backup ;; on|off) db_backup_auto "$2" ;; *) echo "db-backup now | on | off"; exit 1 ;; esac ;;
   email-verify) case "${2:-}" in on|off) email_verify "$2" ;; *) echo "email-verify on 또는 off"; exit 1 ;; esac ;;

@@ -8,7 +8,7 @@ import { directUserFeedback } from '../apis/userFeedback';
 import { allSeniorFaqs, seniorFaqById } from '../apis/seniorFaq';
 import { moderateContent } from '../apis/moderation';
 import { chat } from '../apis/chat';
-import { saveProfile, getProfile, deleteProfile, getProfileOptions } from '../apis/profile';
+import { saveProfile, getProfile, deleteProfile, getProfileOptions, getClosingNotices } from '../apis/profile';
 import { keywordRules } from '../apis/keywordRules';
 
 export const router = express.Router();
@@ -32,4 +32,5 @@ router.post('/chat', promiseHandler(chat));
 router.post('/profile', promiseHandler(saveProfile));
 router.get('/profile', promiseHandler(getProfile));
 router.get('/profile_options', promiseHandler(getProfileOptions));
+router.get('/closing_notices', promiseHandler(getClosingNotices));
 router.delete('/profile', promiseHandler(deleteProfile));

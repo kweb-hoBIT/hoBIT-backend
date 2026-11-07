@@ -60,3 +60,19 @@ export const getProfileOptions = async (_req: Request, res: Response) => {
 	res.set('Cache-Control', 'public, max-age=60');
 	res.status(200).json(ragRes.data);
 };
+
+/** 대화 시작 화면 '곧 마감되는 공지' — 학부 공지·장학 중 7일 안에 마감 (프로필이 있으면 대상이 맞는 것만) */
+export const getClosingNotices = async (req: Request, res: Response) => {
+	try {
+		const sessionId = req.headers['x-session-id'] as string | undefined;
+		const ragRes = await axios.get(`${RAG_SERVER_URL}/notices/closing`, {
+			params: { days: 7, limit: 4 },
+			headers: sessionId ? { 'X-Session-ID': sessionId } : {},
+			timeout: 3000,
+		});
+		res.status(200).json(ragRes.data);
+	} catch (error: any) {
+		console.warn('[ClosingNotices] 실패:', error?.message ?? error);
+		res.status(200).json({ items: [] }); // 없어도 시작 화면은 정상
+	}
+};
