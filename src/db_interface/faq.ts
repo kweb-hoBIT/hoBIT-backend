@@ -102,17 +102,20 @@ export async function fetchTopFaqs(conn: PoolConnection, limit: number) {
 	try {
 		const [rows] = await conn.query<RowDataPacket[]>(
 			`
-      SELECT DISTINCT f.*
+      SELECT f.*
       FROM (
-          SELECT faq_id, COUNT(*) AS count
-          FROM question_logs
-          WHERE created_at >= NOW() - INTERVAL 1 MONTH
-            AND faq_id IS NOT NULL  -- 직접 입력한 질문(faq_id NULL)은 집계에서 제외
-          GROUP BY faq_id
+          -- 최근 한 달 동안 쓰인 횟수 = FAQ를 직접 누른 기록 + AI 답변이 근거로 인용한 기록
+          -- (리뉴얼은 대부분 질문을 직접 입력해 AI가 FAQ를 근거로 답함 — 누른 횟수만 세면 실제로 많이 쓰인 FAQ가 안 잡힘)
+          SELECT f2.id AS faq_id, COUNT(*) AS count
+          FROM question_logs q
+          JOIN faqs f2 ON q.faq_id = f2.id OR FIND_IN_SET(f2.id, q.cited_faq_ids)
+          WHERE q.created_at >= NOW() - INTERVAL 1 MONTH
+          GROUP BY f2.id
           ORDER BY count DESC
           LIMIT ?
       ) AS top_faqs
       JOIN faqs f ON f.id = top_faqs.faq_id
+      ORDER BY top_faqs.count DESC
       LIMIT ?;
       `,
 			[limit, limit]

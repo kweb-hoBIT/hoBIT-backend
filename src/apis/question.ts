@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
+import { ResultSetHeader } from 'mysql2/promise';
 
 import { matchKeywordRules } from './keywordRules';
 import { Pool } from '../../config/connectDB';
@@ -11,6 +12,7 @@ import {
 } from '../types';
 import { OfficialFaq, RecItem } from '../types/question';
 import { envs } from '../envs';
+import { questionLimited } from '../middleware/question_limit';
 
 const RAG_SERVER_URL = envs.RAG_SERVER_URL ?? 'http://localhost:8000';
 const SOURCE_SCORE_THRESHOLD = 0.01;  // RRF 점수 기준 (최대 ~0.033), 이전 cosine 기준(0.42)에서 변경
@@ -587,9 +589,10 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 }
 
 /** 오류 시 사용자에게 보여줄 응답 */
-function errorResponse(question: string, language: QuestionRequest['language']): QuestionResponse {
-	const errorMessage =
-		language === 'KO'
+function errorResponse(question: string, language: QuestionRequest['language'], message?: { ko: string; en: string }): QuestionResponse {
+	const errorMessage = message
+		? (language === 'KO' ? message.ko : message.en)
+		: language === 'KO'
 			? '죄송합니다. 현재 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요.'
 			: 'Sorry, I cannot generate a response at the moment. Please try again later.';
 
@@ -631,25 +634,58 @@ function errorResponse(question: string, language: QuestionRequest['language']):
 }
 
 /**
- * 직접 입력한 질문을 question_logs에 기록 (응답을 보낸 뒤 비동기 — 요청 처리 중에는 DB 연결을 잡지 않음).
- * 인기 질문 집계·추천에 사용. FAQ 정확 일치 경로를 없앴으므로 faq_id는 NULL.
- * answer_status·cited_faq_ids: 관리자 대시보드의 "답을 못 찾은 질문"·"많이 쓰인 FAQ" 집계용
+ * 직접 입력한 질문을 question_logs에 기록하고 기록 번호를 돌려줌 — 답변과 함께 내려보내 👎가 이 기록에 붙게 함.
+ * 인기 질문 집계·추천·관리자 '답을 못 찾은 질문'·'많이 쓰인 FAQ'에 사용. FAQ 정확 일치 경로를 없앴으므로 faq_id는 NULL.
+ * 답변·인용 근거·검색 경로·근거 대조 결과·trace_id도 함께 남겨, 잘못된 답변을 나중에 원인까지 확인할 수 있게 함.
+ * 기록 실패는 답변을 막지 않음 (-1). 짧게 기다림 — 응답 지연 최소화
  */
 // 시나리오 테스트 등에서 질문 로그를 남기지 않을 때 (QUESTION_LOG_DISABLED=1)
 const QUESTION_LOG_DISABLED = process.env['QUESTION_LOG_DISABLED'] === '1';
+const LOG_INSERT_TIMEOUT_MS = 1500;
 
-function logQuestion(question: string, language: QuestionRequest['language'], ragData: any) {
-	if (QUESTION_LOG_DISABLED) return;
+async function logQuestion(question: string, language: QuestionRequest['language'], ragData: any, startedAt: number): Promise<number> {
+	if (QUESTION_LOG_DISABLED) return -1;
 	const status = ragData?.not_found ? 'not_found' : 'answered';
 	// 행정실 FAQ만 (선배 FAQ는 id 공간이 달라 faqs와 섞이지 않게 제외)
 	const faqIds = Array.from(new Set(((ragData?.official_faqs ?? []) as OfficialFaq[])
 		.filter((f) => f.source === 'mysql_faq').map((f) => f.row_id))).join(',').slice(0, 255) || null;
-	Pool.query('INSERT INTO question_logs (faq_id, user_question, language, answer_status, cited_faq_ids) VALUES (NULL, ?, ?, ?, ?)', [
-		question.slice(0, 300),
-		language,
-		status,
-		faqIds,
-	]).catch((err) => console.warn('[Question API] 질문 로그 기록 실패:', err?.message ?? err));
+	const cited = new Set<string>(ragData?.cited_ids ?? []);
+	const citedSources = ((ragData?.sources ?? []) as any[])
+		.filter((src) => cited.has(src?.source_id))
+		.slice(0, 8)
+		.map((src) => ({ id: src.source_id, label: src.source_label || '', title: src.original_title || src.sub_category || '',
+			link: src.link || '' }));
+	const answer = String(ragData?.response ?? '').replace(/\s*\[\s*[SM]?\s*\d{1,2}\s*\]/g, '').trim();
+	const insert = Pool.query<ResultSetHeader>(
+		`INSERT INTO question_logs (faq_id, user_question, language, answer_status, cited_faq_ids,
+		   answer, cited_sources, routes, grounding_issues, trace_id, latency_ms)
+		 VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[
+			question.slice(0, 300),
+			language,
+			status,
+			faqIds,
+			answer.slice(0, 20000) || null,
+			citedSources.length ? JSON.stringify(citedSources) : null,
+			((ragData?.routes ?? []) as string[]).join(' | ').slice(0, 255) || null,
+			((ragData?.grounding_issues ?? []) as string[]).join(', ').slice(0, 500) || null,
+			String(ragData?.trace_id ?? '').slice(0, 32) || null,
+			Date.now() - startedAt,
+		]
+	).then(([result]) => result.insertId, (err: any) => {
+		console.warn('[Question API] 질문 로그 기록 실패:', err?.message ?? err);
+		return -1;
+	});
+	return Promise.race([
+		insert,
+		new Promise<number>((resolve) => setTimeout(() => resolve(-1), LOG_INSERT_TIMEOUT_MS)),
+	]);
+}
+
+/** 화면용 응답에 질문 기록 번호를 붙임 — 👎·👍가 이 답변 기록에 저장되게 */
+function withLogId(body: QuestionResponse, logId: number): QuestionResponse {
+	if (logId < 0) return body;
+	return { ...body, id: logId, faqs: body.faqs?.map((f: any) => ({ ...f, log_id: logId })) ?? body.faqs } as QuestionResponse;
 }
 
 /**
@@ -675,6 +711,11 @@ function validate(body: QuestionRequest) {
 	if (!body.language) throw new ValidationError("invalid parameter, 'language' required");
 }
 
+const LIMIT_MESSAGE = {
+	ko: '질문이 너무 많이 들어와 잠시 쉬어 가요. 1분 뒤에 다시 질문해 주세요.',
+	en: 'Too many questions in a short time. Please try again in a minute.',
+};
+
 /** 한 번에 응답 (기존 클라이언트 호환) */
 export const question = async (
 	req: Request<{}, {}, QuestionRequest>,
@@ -683,6 +724,11 @@ export const question = async (
 	validate(req.body);
 	const { question, language } = req.body;
 	const sessionId = req.headers['x-session-id'] as string | undefined;
+	const startedAt = Date.now();
+	if (questionLimited(req.ip, sessionId)) {
+		res.status(200).json(errorResponse(question, language, LIMIT_MESSAGE)); // 화면이 일반 응답처럼 안내를 보여주게 200
+		return;
+	}
 
 	try {
 		const outcome = await classifyStep(question, language, sessionId);
@@ -697,8 +743,8 @@ export const question = async (
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs },
 			{ headers: ragHeaders(sessionId) }
 		);
-		res.status(200).json(buildRagResponse(ragRes.data, question, outcome.correctedQuestion, language));
-		logQuestion(question, language, ragRes.data);
+		const logId = await logQuestion(question, language, ragRes.data, startedAt);
+		res.status(200).json(withLogId(buildRagResponse(ragRes.data, question, outcome.correctedQuestion, language), logId));
 	} catch (error: any) {
 		console.error('[Question API] 오류:', error);
 		res.status(200).json(errorResponse(question, language));
@@ -721,6 +767,13 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	res.setHeader('X-Accel-Buffering', 'no');
 	res.flushHeaders();
 	const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+	const startedAt = Date.now();
+	if (questionLimited(req.ip, sessionId)) {
+		// 스트림 화면은 done 응답만 보면 되므로 같은 형식으로 안내 (HTTP 상태는 이미 200으로 보냄)
+		send('done', errorResponse(question, language, LIMIT_MESSAGE));
+		res.end();
+		return;
+	}
 
 	// 사용자가 창을 닫으면 RAG 스트림도 끊어 LLM 낭비를 줄인다
 	const abort = new AbortController();
@@ -757,7 +810,8 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 					res.write(`event: ${event}\ndata: ${data}\n\n`);  // 그대로 전달
 				} else if (event === 'done') {
 					doneData = JSON.parse(data);
-					send('done', buildRagResponse(doneData, question, outcome.correctedQuestion, language));
+					const logId = await logQuestion(question, language, doneData, startedAt);
+					send('done', withLogId(buildRagResponse(doneData, question, outcome.correctedQuestion, language), logId));
 					finished = true;
 				} else if (event === 'error') {
 					throw new Error(`RAG stream error: ${data}`);
@@ -765,7 +819,6 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			}
 		}
 		if (!finished) throw new Error('RAG stream ended without done');
-		logQuestion(question, language, doneData);
 	} catch (error: any) {
 		if (!abort.signal.aborted) {
 			console.error('[Question Stream API] 오류:', error?.message ?? error);

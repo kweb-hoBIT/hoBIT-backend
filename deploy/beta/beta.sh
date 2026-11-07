@@ -14,6 +14,7 @@
 #   ... beta.sh crawl-auto on|off    # 정기 수집: 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 — crontab
 #   ... beta.sh rec-check            # 추천 문장 점검: 답 못 하는 예시 질문은 추천에서 뺌 (약 210개 × 2원)
 #   ... beta.sh alert-email <주소>   # 수집·점검이 실패하면 이 주소로 메일 (off = 끄기, test = 시험 메일)
+#   ... beta.sh db-backup now|on|off # DB 백업: 지금 한 번 / 매일 03:40 자동 켜기·끄기 (운영 hobit + 베타 hobit_renewal, 14일 보관)
 #
 # 채팅
 #   ... beta.sh email-verify off     # 학교 메일 코드 인증 없이 바로 채팅 (시연용 — 누구나 다른 학생 메일로 들어올 수 있음)
@@ -29,6 +30,9 @@ APPS="renewal-hobit-backend renewal-admin-backend renewal-rag"
 SELF="$(readlink -f "$0")"
 PROD_ENV="$HOME/hobit/hoBIT-admin-backend/.env"
 CRON_TAG="# hobit-renewal-crawl"
+BACKUP_TAG="# hobit-db-backup"
+BACKUP_DIR="$HOME/backups/daily"
+BACKUP_KEEP_DAYS=14
 CHAT_ENV="$R/hoBIT-backend/.env"
 ALERT_FILE="$R/alert-email"        # 실패 알림 받을 주소 (한 줄)
 ALERT_STATE="$R/.last-alert"       # 같은 문제는 하루에 한 번만 알림
@@ -66,6 +70,7 @@ status() {
   systemctl list-timers --all 2>/dev/null | grep -E "beta-(on|off)" | awk '{print "   예약:", $0}' || true
   free -h | sed -n 2p | awk '{print "   메모리:", $3, "/", $2}'
   crontab -l 2>/dev/null | grep -q "$CRON_TAG" && echo "   정기 수집: 켜짐" || echo "   정기 수집: 꺼짐"
+  crontab -l 2>/dev/null | grep -q "$BACKUP_TAG" && echo "   DB 백업: 켜짐 (마지막: $(ls -t "$BACKUP_DIR"/*.sql.gz 2>/dev/null | head -1 | xargs -r basename))" || echo "   DB 백업: 꺼짐 (beta.sh db-backup on)"
   [ "$(val CHAT_SKIP_EMAIL_VERIFY "$CHAT_ENV")" = "1" ] && echo "   채팅 메일 인증: 꺼짐 (코드 없이 입장)" || echo "   채팅 메일 인증: 켜짐"
   ls -t "$R/hoBIT-rag/logs"/pipeline_*.log 2>/dev/null | head -1 | xargs -r -I{} sh -c 'echo "   마지막 수집: $(basename {} .log | sed s/pipeline_//)"'
   [ -f "$LATEST" ] && python3 -c "import json;d=json.load(open('$LATEST'));print('   수집 결과:', '정상' if d['ok'] else '문제 — ' + ' / '.join(d['problems']))"
@@ -112,6 +117,34 @@ refresh_db() {
   # 리뉴얼 백엔드가 켜질 때 만드는 표(키워드 규칙 등)를 다시 만들도록 재시작, FAQ 검색 데이터도 맞춤
   if [ ! -f "$FLAG" ]; then load_pm2; pm2 restart renewal-admin-backend renewal-hobit-backend >/dev/null; fi
   crawl all --skip-crawl
+}
+
+db_backup() { # 운영·베타 DB를 날짜별 파일로 (같은 서버 안 — 서버 자체가 망가지는 경우는 EBS 스냅샷으로 대비)
+  local TS H U ok=1 db f; TS="$(date +%Y%m%d_%H%M)"
+  H="$(val DB_HOST "$PROD_ENV")"; U="$(val DB_USER "$PROD_ENV")"; export MYSQL_PWD="$(val DB_PASSWORD "$PROD_ENV")"
+  mkdir -p "$BACKUP_DIR"; chmod 700 "$HOME/backups" "$BACKUP_DIR"
+  for db in hobit hobit_renewal; do
+    f="$BACKUP_DIR/${db}_$TS.sql.gz"
+    if mysqldump -h"$H" -u"$U" --single-transaction --routines --triggers --no-tablespaces --set-gtid-purged=OFF "$db" | gzip > "$f" \
+       && [ "$(gunzip -c "$f" | tail -1 | grep -c 'Dump completed')" = 1 ]; then
+      chmod 600 "$f"; echo "백업: $f ($(du -h "$f" | cut -f1))"
+    else
+      ok=0; rm -f "$f"; echo "백업 실패: $db"
+    fi
+  done
+  find "$BACKUP_DIR" -name '*.sql.gz' -mtime +"$BACKUP_KEEP_DAYS" -delete   # 14일 지난 것 정리
+  [ "$ok" = 1 ] || { alert "DB 백업 실패" "$(date '+%m/%d %H:%M') DB 백업이 실패했어요. 서버에서 beta.sh db-backup now 로 다시 시도해 주세요."; return 1; }
+}
+
+db_backup_auto() {
+  local cur; cur="$(crontab -l 2>/dev/null | grep -v "$BACKUP_TAG" || true)"
+  if [ "$1" = "on" ]; then
+    printf '%s\n%s\n' "$cur" "40 3 * * * /bin/bash $SELF db-backup now >/dev/null 2>&1 $BACKUP_TAG" | sed '/^$/d' | crontab -
+    echo "DB 백업 켜짐: 매일 03:40 (운영·베타, ${BACKUP_KEEP_DAYS}일 보관 — $BACKUP_DIR)"
+  else
+    printf '%s\n' "$cur" | sed '/^$/d' | crontab -
+    echo "DB 백업 꺼짐"
+  fi
 }
 
 crawl() { # $1 = all|boards|static, 나머지는 run_pipeline.py 옵션
@@ -193,6 +226,7 @@ case "${1:-status}" in
   refresh-db) refresh_db ;;
   crawl) shift; crawl "$@" ;;
   crawl-auto) crawl_auto "${2:?on 또는 off}" ;;
+  db-backup) case "${2:-}" in now) db_backup ;; on|off) db_backup_auto "$2" ;; *) echo "db-backup now | on | off"; exit 1 ;; esac ;;
   email-verify) case "${2:-}" in on|off) email_verify "$2" ;; *) echo "email-verify on 또는 off"; exit 1 ;; esac ;;
   rec-check) rec_check ;;
   alert-email) alert_email "${2:-}" ;;

@@ -202,22 +202,30 @@ const createTables = async () => {
   await createApiLogTable();
 };
 
-// 나중에 추가한 칸 — 이미 만들어진 question_logs에도 붙임 (MySQL·MariaDB 모두 되도록 information_schema로 확인)
-const QUESTION_LOG_COLUMNS: [column: string, ddl: string][] = [
-  ['ismatched', 'INT DEFAULT 0'],              // 밤 12시 작업이 이미 살펴본 질문 = 1
-  ['answer_status', 'VARCHAR(16) NULL'],       // answered | not_found (직접 입력한 질문의 RAG 답변 결과)
-  ['cited_faq_ids', 'VARCHAR(255) NULL'],      // 답변이 근거로 인용한 행정실 FAQ id (쉼표 구분)
+// 나중에 추가한 칸 — 이미 만들어진 테이블에도 붙임 (MySQL·MariaDB 모두 되도록 information_schema로 확인)
+const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
+  ['question_logs', 'ismatched', 'INT DEFAULT 0'],              // 밤 12시 작업이 이미 살펴본 질문 = 1
+  ['question_logs', 'answer_status', 'VARCHAR(16) NULL'],       // answered | not_found (직접 입력한 질문의 RAG 답변 결과)
+  ['question_logs', 'cited_faq_ids', 'VARCHAR(255) NULL'],      // 답변이 근거로 인용한 행정실 FAQ id (쉼표 구분)
+  // 답변 추적 — 👎·못 찾은 질문을 관리자가 볼 때 "무슨 답을, 어떤 자료를 보고 했는지" 확인용
+  ['question_logs', 'answer', 'MEDIUMTEXT NULL'],               // 학생에게 보인 최종 답변 (근거 대조 후)
+  ['question_logs', 'cited_sources', 'TEXT NULL'],              // 인용한 근거 [{label, title, link}] (JSON)
+  ['question_logs', 'routes', 'VARCHAR(255) NULL'],             // 규칙으로 정한 검색 경로 (학사일정·교육과정표·게시판 범위 등)
+  ['question_logs', 'grounding_issues', 'VARCHAR(500) NULL'],   // 근거에 없어 답변에서 뺀 날짜·숫자
+  ['question_logs', 'trace_id', 'VARCHAR(32) NULL'],            // RAG 검색 기록 파일 번호 (logs/날짜/rag_*_{trace_id}.json)
+  ['question_logs', 'latency_ms', 'INT NULL'],                  // 질문을 받고 답을 다 보낼 때까지
+  ['user_feedbacks', 'question_log_id', 'INT NULL'],            // 👎를 누른 답변 (question_logs.id)
 ];
 
-const addQuestionLogColumns = async () => {
+const addColumns = async () => {
   const connection = await createConnection();
   try {
-    for (const [column, ddl] of QUESTION_LOG_COLUMNS) {
+    for (const [table, column, ddl] of ADDED_COLUMNS) {
       const [rows]: any = await connection.query(
-        `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'question_logs' AND column_name = ?`,
-        [column]
+        `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+        [table, column]
       );
-      if (!rows.length) await connection.query(`ALTER TABLE question_logs ADD COLUMN \`${column}\` ${ddl}`);
+      if (!rows.length) await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
     }
   } finally {
     await connection.end();
@@ -227,5 +235,5 @@ const addQuestionLogColumns = async () => {
 export const initializeDatabase = async () => {
   await createDB();
   await createTables();
-  await addQuestionLogColumns();
+  await addColumns();
 };
