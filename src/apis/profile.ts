@@ -50,3 +50,13 @@ export const deleteProfile = async (req: Request, res: Response) => {
 	});
 	res.status(ragRes.status).json(ragRes.data);
 };
+
+/**
+ * 프로필 선택지 — 학과·전공 유형·학적 상태(관리자 사이트 '프로필 항목'), 학년, 학번(올해 기준 자동)
+ * RAG가 DB를 1분 캐시로 읽음. 화면도 1분 캐시
+ */
+export const getProfileOptions = async (_req: Request, res: Response) => {
+	const ragRes = await axios.get(`${RAG_SERVER_URL}/profile/options`, { timeout: 5000 });
+	res.set('Cache-Control', 'public, max-age=60');
+	res.status(200).json(ragRes.data);
+};
