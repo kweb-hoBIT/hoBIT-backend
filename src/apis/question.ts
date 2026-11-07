@@ -596,7 +596,7 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 	return {
 		faqs: [llmFaq],
 		...makeFlags({ followup_fields: followupFields, official_faqs: officialFaqs,
-			recommendations: ragData.recommendations ?? [] }),
+			recommendations: ragData.recommendations ?? [], related_notices: ragData.related_notices ?? [] }),
 		id: -1,
 	} as QuestionResponse;
 }

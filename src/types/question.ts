@@ -22,8 +22,11 @@ export type QuestionResponse = {
   followup_fields: string[];    // 막지 않는 질문: 답변과 함께 보여주는 추가 정보 요청 (해당 여부 확인용)
   official_faqs: OfficialFaq[]; // "공식 답변 보기" 칩 — FAQ id로 바로 조회
   recommendations: RecItem[];   // 답변 아래 "이어서 많이 묻는 질문" (SPRINT 추천)
+  related_notices?: RelatedNotice[]; // 답변 아래 "관련 공지" — 질문 주제와 맞고 아직 신청할 수 있는 공지
   id: number;
 };
+
+export type RelatedNotice = { title: string; link: string; due_end_date: string; d_day: number; status: 'open' | 'upcoming' };
 
 export type OfficialFaq = {
   row_id: number;
