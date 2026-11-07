@@ -38,7 +38,7 @@ const MAX_PINNED_FAQS = 3;
 
 type ClassifyOutcome =
 	| { kind: 'early'; body: QuestionResponse }
-	| { kind: 'rag'; correctedQuestion: string; keywords: string[]; requiredProfile: string[]; pinnedFaqs: string[] };
+	| { kind: 'rag'; correctedQuestion: string; keywords: string[]; requiredProfile: string[]; pinnedFaqs: string[]; routeSources: string[] };
 
 /** 1·2단계: 의도 분류 → 인사·스몰톡·막는 프로필 질문이면 바로 응답, 아니면 RAG로 보낼 정보 반환 */
 async function classifyStep(question: string, language: QuestionRequest['language'], sessionId?: string): Promise<ClassifyOutcome> {
@@ -142,9 +142,11 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 	const rules = await matchKeywordRules(`${question} ${correctedQuestion} ${keywords.join(' ')}`);
 	const ruleKeywords = rules.map((r) => r.keyword).filter((k) => !keywords.includes(k));
 	const pinnedFaqs = Array.from(new Set(rules.flatMap((r) => r.pinned.map((p) => p.question_ko)))).slice(0, MAX_PINNED_FAQS);
-	if (rules.length) console.log(`[keyword_rules] ${rules.map((r) => r.keyword).join(', ')} → 고정 FAQ ${pinnedFaqs.length}개`);
+	// 관리자가 정한 '먼저 찾아볼 곳' — RAG가 이 출처에서 먼저 찾아 근거 앞에 둠
+	const routeSources = Array.from(new Set(rules.flatMap((r) => r.sources ?? []))).slice(0, 8);
+	if (rules.length) console.log(`[keyword_rules] ${rules.map((r) => r.keyword).join(', ')} → 고정 FAQ ${pinnedFaqs.length}개, 찾아볼 곳 ${routeSources.length}개`);
 
-	return { kind: 'rag', correctedQuestion, keywords: [...keywords, ...ruleKeywords], requiredProfile, pinnedFaqs };
+	return { kind: 'rag', correctedQuestion, keywords: [...keywords, ...ruleKeywords], requiredProfile, pinnedFaqs, routeSources };
 }
 
 /** RAG 응답(/chat 또는 /chat/stream의 done) → 화면용 응답 (카드 분할·출처 정리·공식 답변 칩) */
@@ -740,7 +742,8 @@ export const question = async (
 			`${RAG_SERVER_URL}/chat`,
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
-			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs },
+			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
+			  route_sources: outcome.routeSources },
 			{ headers: ragHeaders(sessionId) }
 		);
 		const logId = await logQuestion(question, language, ragRes.data, startedAt);
@@ -790,7 +793,8 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			`${RAG_SERVER_URL}/chat/stream`,
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
-			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs },
+			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
+			  route_sources: outcome.routeSources },
 			{ headers: ragHeaders(sessionId), responseType: 'stream', signal: abort.signal }
 		);
 

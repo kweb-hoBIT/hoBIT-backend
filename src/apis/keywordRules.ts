@@ -5,7 +5,7 @@ import { Pool } from '../../config/connectDB';
 
 /**
  * 키워드 규칙 (관리자 사이트에서 등록 — keyword_rules 테이블)
- *   대표 키워드 + 연관 단어 + 맨 위에 고정할 FAQ
+ *   대표 키워드 + 연관 단어 + 맨 위에 고정할 FAQ + 먼저 찾아볼 곳(search_sources — 예: 휴학 → 학사 운영 규정·학사안내 페이지)
  *   예) 입시 ← 수시, 정시, 이공계, 계열  /  고정: "수시, 정시 등 입학(입시) 관련 사항이 궁금해!"
  * - 입력창 추천(자동완성): 화면이 GET /keyword_rules로 받아 브라우저에서 바로 적용
  * - 질문: 연관 단어가 있으면 대표 키워드를 검색어에 더하고, 고정 FAQ를 RAG 근거로 넘김 (matchKeywordRules)
@@ -16,6 +16,7 @@ export type KeywordRule = {
 	keyword: string;
 	synonyms: string[];
 	pinned: { faq_id: number; question_ko: string; question_en: string }[];
+	sources: string[]; // 먼저 찾아볼 곳 — RAG 출처 이름 (RAG GET /search/sources 목록)
 };
 
 const CACHE_MS = 60_000;
@@ -35,12 +36,13 @@ const parseList = (v: unknown): unknown[] => {
 async function fetchRules(): Promise<KeywordRule[]> {
 	try {
 		const [rows] = await Pool.query<RowDataPacket[]>(
-			'SELECT keyword, synonyms, pinned_faq_ids FROM keyword_rules'
+			'SELECT * FROM keyword_rules'
 		);
 		const rules = rows.map((r) => ({
 			keyword: String(r['keyword']),
 			synonyms: parseList(r['synonyms']).map(String),
 			ids: parseList(r['pinned_faq_ids']).map(Number).filter(Number.isInteger),
+			sources: parseList(r['search_sources']).map(String).filter(Boolean), // 칸이 없던 예전 DB면 빈 목록
 		}));
 		const ids = Array.from(new Set(rules.flatMap((r) => r.ids)));
 		const faqs = new Map<number, { question_ko: string; question_en: string }>();
@@ -56,6 +58,7 @@ async function fetchRules(): Promise<KeywordRule[]> {
 			synonyms: r.synonyms,
 			// 지워진 FAQ는 건너뜀
 			pinned: r.ids.filter((id) => faqs.has(id)).map((id) => ({ faq_id: id, ...faqs.get(id)! })),
+			sources: r.sources,
 		}));
 	} catch (e: any) {
 		// 관리자 사이트가 아직 테이블을 만들기 전이면 규칙 없음으로 (호빗 답변은 막지 않음)
