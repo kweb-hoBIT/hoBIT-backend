@@ -10,7 +10,7 @@ import {
 	QuestionResponse,
 	ValidationError,
 } from '../types';
-import { OfficialFaq, RecItem } from '../types/question';
+import { OfficialFaq, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
 import { questionLimited } from '../middleware/question_limit';
 
@@ -578,6 +578,7 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 	// → question_ko는 한국어 corrected, question_en은 사용자 원본 (영어로 입력했으면 영어 그대로 표시)
 	const llmFaq = {
 		id: -1,
+		related_notices: (ragData.related_notices ?? []) as RelatedNotice[],  // 출처 옆 '관련 공지' 카드
 		question_ko: correctedQuestion,                          // 항상 한국어 (corrected)
 		question_en: language === 'EN' ? question : correctedQuestion,  // 영어 입력이면 원본, 아니면 한국어
 		answer_ko: answerJson,
