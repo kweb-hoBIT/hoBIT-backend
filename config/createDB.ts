@@ -214,6 +214,8 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ['question_logs', 'grounding_issues', 'VARCHAR(500) NULL'],   // 근거에 없어 답변에서 뺀 날짜·숫자
   ['question_logs', 'trace_id', 'VARCHAR(32) NULL'],            // RAG 검색 기록 파일 번호 (logs/날짜/rag_*_{trace_id}.json)
   ['question_logs', 'latency_ms', 'INT NULL'],                  // 질문을 받고 답을 다 보낼 때까지
+  ['question_logs', 'classified_by', 'VARCHAR(8) NULL'],        // rule | llm — 질문 종류를 규칙으로 정했는지 (AI 분류 비율)
+  ['question_logs', 'topic', 'VARCHAR(32) NULL'],               // 주제 지도로 알아본 주제 (hoBIT-rag/src/utils/topics.py)
   ['user_feedbacks', 'question_log_id', 'INT NULL'],            // 👎를 누른 답변 (question_logs.id)
 ];
 

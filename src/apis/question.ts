@@ -38,7 +38,8 @@ const MAX_PINNED_FAQS = 3;
 
 type ClassifyOutcome =
 	| { kind: 'early'; body: QuestionResponse }
-	| { kind: 'rag'; correctedQuestion: string; keywords: string[]; requiredProfile: string[]; pinnedFaqs: string[]; routeSources: string[] };
+	| { kind: 'rag'; correctedQuestion: string; keywords: string[]; requiredProfile: string[]; pinnedFaqs: string[]; routeSources: string[];
+	    classifiedBy: string; topic: string | null };
 
 /** 1·2단계: 의도 분류 → 인사·스몰톡·막는 프로필 질문이면 바로 응답, 아니면 RAG로 보낼 정보 반환 */
 async function classifyStep(question: string, language: QuestionRequest['language'], sessionId?: string): Promise<ClassifyOutcome> {
@@ -48,6 +49,8 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 	let smalltalkResponse: string | null = null;
 	let keywords: string[] = [];
 	let requiredProfile: string[] = [];
+	let classifiedBy = 'llm';      // rule | llm — 질문 종류를 규칙으로 정했는지 (질문 기록)
+	let topic: string | null = null;
 
 	try {
 		const classifyRes = await axios.post(
@@ -62,6 +65,8 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 		const profileUpdate: Record<string, unknown> = classifyRes.data.profile_update ?? {};
 		const currentProfile: Record<string, unknown> = classifyRes.data.current_profile ?? {};
 		requiredProfile = classifyRes.data.required_profile ?? [];
+		classifiedBy = classifyRes.data.classified_by ?? 'llm';
+		topic = classifyRes.data.topic ?? null;
 		const hardFilters: Record<string, unknown> = classifyRes.data.hard_filters ?? {};
 
 		const profileStatusLine = Object.keys(currentProfile).length > 0
@@ -146,7 +151,8 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 	const routeSources = Array.from(new Set(rules.flatMap((r) => r.sources ?? []))).slice(0, 8);
 	if (rules.length) console.log(`[keyword_rules] ${rules.map((r) => r.keyword).join(', ')} → 고정 FAQ ${pinnedFaqs.length}개, 찾아볼 곳 ${routeSources.length}개`);
 
-	return { kind: 'rag', correctedQuestion, keywords: [...keywords, ...ruleKeywords], requiredProfile, pinnedFaqs, routeSources };
+	return { kind: 'rag', correctedQuestion, keywords: [...keywords, ...ruleKeywords], requiredProfile, pinnedFaqs, routeSources,
+		classifiedBy, topic };
 }
 
 /** RAG 응답(/chat 또는 /chat/stream의 done) → 화면용 응답 (카드 분할·출처 정리·공식 답변 칩) */
@@ -645,7 +651,8 @@ function errorResponse(question: string, language: QuestionRequest['language'], 
 const QUESTION_LOG_DISABLED = process.env['QUESTION_LOG_DISABLED'] === '1';
 const LOG_INSERT_TIMEOUT_MS = 1500;
 
-async function logQuestion(question: string, language: QuestionRequest['language'], ragData: any, startedAt: number): Promise<number> {
+async function logQuestion(question: string, language: QuestionRequest['language'], ragData: any, startedAt: number,
+	classify?: { classifiedBy: string; topic: string | null }): Promise<number> {
 	if (QUESTION_LOG_DISABLED) return -1;
 	const status = ragData?.not_found ? 'not_found' : 'answered';
 	// 행정실 FAQ만 (선배 FAQ는 id 공간이 달라 faqs와 섞이지 않게 제외)
@@ -660,8 +667,8 @@ async function logQuestion(question: string, language: QuestionRequest['language
 	const answer = String(ragData?.response ?? '').replace(/\s*\[\s*[SM]?\s*\d{1,2}\s*\]/g, '').trim();
 	const insert = Pool.query<ResultSetHeader>(
 		`INSERT INTO question_logs (faq_id, user_question, language, answer_status, cited_faq_ids,
-		   answer, cited_sources, routes, grounding_issues, trace_id, latency_ms)
-		 VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		   answer, cited_sources, routes, grounding_issues, trace_id, latency_ms, classified_by, topic)
+		 VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[
 			question.slice(0, 300),
 			language,
@@ -673,6 +680,8 @@ async function logQuestion(question: string, language: QuestionRequest['language
 			((ragData?.grounding_issues ?? []) as string[]).join(', ').slice(0, 500) || null,
 			String(ragData?.trace_id ?? '').slice(0, 32) || null,
 			Date.now() - startedAt,
+			classify?.classifiedBy?.slice(0, 8) ?? null,
+			classify?.topic?.slice(0, 32) ?? null,
 		]
 	).then(([result]) => result.insertId, (err: any) => {
 		console.warn('[Question API] 질문 로그 기록 실패:', err?.message ?? err);
@@ -746,7 +755,7 @@ export const question = async (
 			  route_sources: outcome.routeSources },
 			{ headers: ragHeaders(sessionId) }
 		);
-		const logId = await logQuestion(question, language, ragRes.data, startedAt);
+		const logId = await logQuestion(question, language, ragRes.data, startedAt, outcome);
 		res.status(200).json(withLogId(buildRagResponse(ragRes.data, question, outcome.correctedQuestion, language), logId));
 	} catch (error: any) {
 		console.error('[Question API] 오류:', error);
@@ -814,7 +823,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 					res.write(`event: ${event}\ndata: ${data}\n\n`);  // 그대로 전달
 				} else if (event === 'done') {
 					doneData = JSON.parse(data);
-					const logId = await logQuestion(question, language, doneData, startedAt);
+					const logId = await logQuestion(question, language, doneData, startedAt, outcome);
 					send('done', withLogId(buildRagResponse(doneData, question, outcome.correctedQuestion, language), logId));
 					finished = true;
 				} else if (event === 'error') {
