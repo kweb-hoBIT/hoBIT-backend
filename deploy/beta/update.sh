@@ -29,7 +29,13 @@ main() {
     echo "베타가 꺼져 있어 재시작하지 않음 (켜면 새 코드로 시작)"; exit 0
   fi
   restart
-  health "$URL" && return 0
+  if health "$URL"; then
+    # 챗봇 답변에 영향을 주는 저장소면 시나리오 테스트를 뒤에서 돌림 (배포는 기다리지 않음, 실패하면 알림 메일)
+    case "$REPO" in
+      hoBIT-backend|hoBIT-rag) setsid nohup bash "$K/beta.sh" test-after-deploy >/dev/null 2>&1 < /dev/null & ;;
+    esac
+    return 0
+  fi
 
   [ -n "$OLD" ] || exit 1
   local NEW; NEW="$(git rev-parse HEAD)"

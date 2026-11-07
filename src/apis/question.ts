@@ -14,6 +14,11 @@ import { OfficialFaq, RecItem } from '../types/question';
 import { envs } from '../envs';
 import { questionLimited } from '../middleware/question_limit';
 
+// 서버 안에서 돌리는 시나리오 테스트(beta.sh test) — 질문 기록·인기 질문 집계에 넣지 않음.
+// 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const isTestRun = (req: Request) => req.headers['x-no-log'] === '1' && LOOPBACK.has(req.ip ?? '');
+
 const RAG_SERVER_URL = envs.RAG_SERVER_URL ?? 'http://localhost:8000';
 const SOURCE_SCORE_THRESHOLD = 0.01;  // RRF 점수 기준 (최대 ~0.033), 이전 cosine 기준(0.42)에서 변경
 const SOURCE_RELATIVE_RATIO = 0.7;
@@ -736,6 +741,7 @@ export const question = async (
 	const { question, language } = req.body;
 	const sessionId = req.headers['x-session-id'] as string | undefined;
 	const startedAt = Date.now();
+	const testRun = isTestRun(req);
 	if (questionLimited(req.ip, sessionId)) {
 		res.status(200).json(errorResponse(question, language, LIMIT_MESSAGE)); // 화면이 일반 응답처럼 안내를 보여주게 200
 		return;
@@ -752,10 +758,10 @@ export const question = async (
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources },
+			  route_sources: outcome.routeSources, probe: testRun },
 			{ headers: ragHeaders(sessionId) }
 		);
-		const logId = await logQuestion(question, language, ragRes.data, startedAt, outcome);
+		const logId = testRun ? -1 : await logQuestion(question, language, ragRes.data, startedAt, outcome);
 		res.status(200).json(withLogId(buildRagResponse(ragRes.data, question, outcome.correctedQuestion, language), logId));
 	} catch (error: any) {
 		console.error('[Question API] 오류:', error);
@@ -780,6 +786,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	res.flushHeaders();
 	const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 	const startedAt = Date.now();
+	const testRun = isTestRun(req);
 	if (questionLimited(req.ip, sessionId)) {
 		// 스트림 화면은 done 응답만 보면 되므로 같은 형식으로 안내 (HTTP 상태는 이미 200으로 보냄)
 		send('done', errorResponse(question, language, LIMIT_MESSAGE));
@@ -803,7 +810,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources },
+			  route_sources: outcome.routeSources, probe: testRun },
 			{ headers: ragHeaders(sessionId), responseType: 'stream', signal: abort.signal }
 		);
 
@@ -823,7 +830,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 					res.write(`event: ${event}\ndata: ${data}\n\n`);  // 그대로 전달
 				} else if (event === 'done') {
 					doneData = JSON.parse(data);
-					const logId = await logQuestion(question, language, doneData, startedAt, outcome);
+					const logId = testRun ? -1 : await logQuestion(question, language, doneData, startedAt, outcome);
 					send('done', withLogId(buildRagResponse(doneData, question, outcome.correctedQuestion, language), logId));
 					finished = true;
 				} else if (event === 'error') {

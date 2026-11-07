@@ -13,6 +13,7 @@
 #   ... beta.sh crawl [all|boards|static]   # 홈페이지 공지·페이지 다시 수집 → 정제 → 색인 (기본 all, 바뀐 것만, OpenAI 비용 소액)
 #   ... beta.sh crawl-auto on|off    # 정기 수집: 15분마다 새 공지 확인, 3시간마다 게시판(매시 20분), 매일 04:30 전체, 일요일 05:40 추천 문장 점검 — crontab
 #   ... beta.sh crawl-quick          # 공지·장학 게시판 목록 첫 페이지만 보고 새 글이 있으면 게시판 수집 (15분마다 자동)
+#   ... beta.sh test                 # 시나리오 테스트 34개를 베타 서버에 (질문 기록 제외, 실패하면 알림) — 배포 후 자동
 #   ... beta.sh rec-check            # 추천 문장 점검: 답 못 하는 예시 질문은 추천에서 뺌 (약 210개 × 2원)
 #   ... beta.sh alert-email <주소>   # 수집·점검이 실패하면 이 주소로 메일 (off = 끄기, test = 시험 메일)
 #   ... beta.sh db-backup now|on|off # DB 백업: 지금 한 번 / 매일 03:40 자동 켜기·끄기 (운영 hobit + 베타 hobit_renewal, 14일 보관)
@@ -148,6 +149,21 @@ db_backup_auto() {
   fi
 }
 
+scenario_test() { # 배포 후 자동(update.sh) 또는 직접 — 같은 시간에 두 번 돌지 않게 잠금
+  local dir="$R/hoBIT-rag/logs/scenarios"; mkdir -p "$dir"
+  exec 9>"$dir/.lock"
+  flock -n 9 || { echo "시나리오 테스트가 이미 실행 중 — 건너뜀"; return 0; }
+  local out code=0
+  out="$(cd "$R/hoBIT-rag" && venv/bin/python scripts/scenario_check.py 2>&1)" || code=$?
+  echo "$out"
+  if [ "$code" != 0 ]; then
+    alert "배포 후 시나리오 테스트 실패" "새 버전에서 답변 동작이 기대와 다른 시나리오가 있어요 (한 번 더 돌려도 실패).
+$out
+
+자세한 결과: $dir/latest.json"
+  fi
+}
+
 crawl_quick() { # 새 공지가 있을 때만 게시판 수집 — 목록 4장만 보므로 학교 서버·비용 부담 거의 없음
   local lock="$R/hoBIT-rag/datasets/.pipeline.lock"
   # 다른 수집이 돌고 있으면 건너뜀 (겹치면 파이프라인이 바로 끝나 '수집 실패' 알림이 잘못 감)
@@ -237,6 +253,8 @@ case "${1:-status}" in
   refresh-db) refresh_db ;;
   crawl) shift; crawl "$@" ;;
   crawl-quick) crawl_quick ;;
+  test) scenario_test ;;
+  test-after-deploy) sleep 90; scenario_test >/dev/null 2>&1 ;;   # update.sh가 부름 — 함께 배포되는 저장소가 모두 뜬 뒤
   crawl-auto) crawl_auto "${2:?on 또는 off}" ;;
   db-backup) case "${2:-}" in now) db_backup ;; on|off) db_backup_auto "$2" ;; *) echo "db-backup now | on | off"; exit 1 ;; esac ;;
   email-verify) case "${2:-}" in on|off) email_verify "$2" ;; *) echo "email-verify on 또는 off"; exit 1 ;; esac ;;
