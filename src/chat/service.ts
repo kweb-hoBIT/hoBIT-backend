@@ -117,13 +117,21 @@ export function cleanProfile(raw: unknown): Record<string, string> | null {
  * "연결되었어요" 안내 — 학생에게는 계정 이름 대신 역할 (계정 이름은 "kwebhobit"처럼 의미가 없거나 직원 실명)
  * 누가 들어왔는지는 sender_name에 남겨 담당자 화면에서만 보여줌
  */
-export const joinText = (agent: { role: string }) => (agent.role === 'senior' ? '선배가 연결되었어요.' : '행정실 담당자가 연결되었어요.');
+export const joinText = (agent: { role: string }) => (agent.role === 'senior' ? '근로장학생이 연결되었어요.' : '행정실 담당자가 연결되었어요.');
 
 /** 근로장학생(선배)에게는 이름·학번을 보이지 않음 — 메일을 가리는 것과 같은 이유 */
 const SENIOR_HIDDEN = ['name', 'student_id'];
 
+/**
+ * 채팅 켜고 끄기 (관리자 사이트 > 관리 > 채팅)
+ *   staff / senior: 행정실 채팅·근로장학생 채팅을 쓸지 — 끄면 호빗 화면에 그 채팅 버튼이 아예 안 보임
+ *   emailVerification: 채팅 시작 전 학교 메일(@korea.ac.kr) 인증 — 끄면 메일 주소만 적고 바로 시작 (본인 확인 없음)
+ */
+export type ChatFeatures = { staff: boolean; senior: boolean; emailVerification: boolean };
+
 export class ChatService {
 	private settingsCache: { at: number; value: HoursSettings } | null = null;
+	private featuresCache: { at: number; value: ChatFeatures } | null = null;
 
 	constructor(
 		readonly pool: Pool,
@@ -155,6 +163,39 @@ export class ChatService {
 
 	async staffStatus() {
 		return staffHours(this.now(), await this.getHours());
+	}
+
+	// ── 채팅 켜고 끄기 ───────────────────────────────────────
+	private defaultFeatures(): ChatFeatures {
+		// 저장된 값이 없으면 지금까지와 같게 (메일 인증은 환경 변수 CHAT_SKIP_EMAIL_VERIFY 기준)
+		return { staff: true, senior: true, emailVerification: !this.config.skipEmailVerify };
+	}
+
+	async getFeatures(): Promise<ChatFeatures> {
+		if (this.featuresCache && Date.now() - this.featuresCache.at < 10_000) return this.featuresCache.value;
+		const [rows] = await this.pool.query<Row[]>(`SELECT value FROM chat_settings WHERE name = 'features'`);
+		const saved = json(rows[0]?.['value']) as Partial<ChatFeatures> | null;
+		const d = this.defaultFeatures();
+		const value: ChatFeatures = {
+			staff: typeof saved?.staff === 'boolean' ? saved.staff : d.staff,
+			senior: typeof saved?.senior === 'boolean' ? saved.senior : d.senior,
+			emailVerification: typeof saved?.emailVerification === 'boolean' ? saved.emailVerification : d.emailVerification,
+		};
+		this.featuresCache = { at: Date.now(), value };
+		return value;
+	}
+
+	async setFeatures(raw: unknown): Promise<ChatFeatures | null> {
+		if (!raw || typeof raw !== 'object') return null;
+		const cur = await this.getFeatures();
+		const r = raw as Record<string, unknown>;
+		const pick = (k: keyof ChatFeatures) => (typeof r[k] === 'boolean' ? (r[k] as boolean) : cur[k]);
+		const value: ChatFeatures = { staff: pick('staff'), senior: pick('senior'), emailVerification: pick('emailVerification') };
+		await this.pool.query(`INSERT INTO chat_settings (name, value) VALUES ('features', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)`, [
+			JSON.stringify(value),
+		]);
+		this.featuresCache = null;
+		return value;
 	}
 
 	// ── 학교 메일 인증 ───────────────────────────────────────

@@ -27,7 +27,8 @@ const ERROR_TEXT: Record<string, string> = {
 	expired: '인증 코드가 만료되었어요. 다시 받아 주세요.',
 	too_many: '인증 코드를 여러 번 틀렸어요. 코드를 다시 받아 주세요.',
 	closed_hours: '지금은 채팅 운영 시간이 아니에요.',
-	away: '지금은 선배가 자리를 비웠어요.',
+	away: '지금은 근로장학생이 자리를 비웠어요.',
+	disabled: '지금은 이 채팅을 운영하지 않아요.',
 	invalid_year: '연도를 확인해 주세요.',
 	holiday_source_unavailable: '공휴일 캘린더를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
 };
@@ -79,6 +80,8 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	const emailOf = (req: Authed) => (req.viewer as { kind: 'student'; email: string }).email;
 
 	const modeStatus = async (mode: Mode) => {
+		// 관리자가 끈 채팅 — 호빗 화면은 버튼을 숨기지만, 예전 화면에서 들어와도 시작하지 못하게
+		if (!(await service.getFeatures())[mode]) return { mode, open: false, reason: 'disabled', hours: null };
 		if (mode === 'senior') {
 			const n = realtime.presence.seniorsAvailable();
 			return { mode, open: n > 0, reason: n > 0 ? 'open' : 'away', hours: null };
@@ -90,7 +93,15 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	// ── 상태 (누구나) ───────────────────────────────────────
 	route.get('/status', async (req, res) => {
 		const mode: Mode = req.query['mode'] === 'senior' ? 'senior' : 'staff';
-		res.json({ ok: true, ...(await modeStatus(mode)), officeEmail: service.config.officeEmail, emailVerification: !service.config.skipEmailVerify });
+		const f = await service.getFeatures();
+		res.json({ ok: true, ...(await modeStatus(mode)), officeEmail: service.config.officeEmail, emailVerification: f.emailVerification });
+	});
+
+	// 어떤 채팅을 쓰는지 (호빗 화면이 버튼을 보일지 정함, 누구나)
+	route.get('/features', async (_req, res) => {
+		const f = await service.getFeatures();
+		res.set('Cache-Control', 'no-store');
+		res.json({ ok: true, staff: f.staff, senior: f.senior, emailVerification: f.emailVerification });
 	});
 
 	// ── 학교 메일 인증 ──────────────────────────────────────
@@ -106,9 +117,9 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 		return res.json({ ok: true, token: r.token, email: r.email, expiresIn: STUDENT_TOKEN_TTL_SEC });
 	});
 
-	// 메일 인증 생략 — 설정이 꺼져 있으면(기본) 없는 주소처럼 404
+	// 메일 인증 생략 — 관리자 사이트에서 메일 인증을 켜 두었으면(기본) 없는 주소처럼 404
 	route.post('/email/dev-login', express.json({ limit: '4kb' }), async (req, res) => {
-		if (!service.config.skipEmailVerify) return res.status(404).json({ ok: false, error: 'not_found' });
+		if ((await service.getFeatures()).emailVerification) return res.status(404).json({ ok: false, error: 'not_found' });
 		const r = await service.devLogin(String(req.body?.email ?? ''));
 		if (!r.ok) return fail(res, 400, r.error);
 		return res.json({ ok: true, token: r.token, email: r.email, expiresIn: STUDENT_TOKEN_TTL_SEC });
@@ -134,7 +145,7 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 		const existing = await service.openSessionOf(email);
 		if (!existing) {
 			const st = await modeStatus(mode);
-			if (!st.open) return fail(res, 409, mode === 'senior' ? 'away' : 'closed_hours');
+			if (!st.open) return fail(res, 409, st.reason === 'disabled' ? 'disabled' : mode === 'senior' ? 'away' : 'closed_hours');
 		}
 		const { row, created } = await service.createSession(email, {
 			mode,
@@ -302,6 +313,12 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			console.error('[chat] 공휴일 불러오기 실패:', (e as Error).message);
 			return fail(res, 502, 'holiday_source_unavailable');
 		}
+	});
+	// 채팅 켜고 끄기 — 보기는 담당자 누구나, 바꾸기는 행정실·개발자만
+	route.get('/agent/features', agent, async (_req, res) => res.json({ ok: true, features: await service.getFeatures() }));
+	route.put('/agent/features', express.json({ limit: '4kb' }), agent, staffOnly, async (req, res) => {
+		const features = await service.setFeatures(req.body?.features);
+		return features ? res.json({ ok: true, features }) : fail(res, 400, 'invalid');
 	});
 	route.put('/agent/settings', express.json({ limit: '16kb' }), agent, staffOnly, async (req, res) => {
 		const hours = await service.setHours(req.body?.hours);
