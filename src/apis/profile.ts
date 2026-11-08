@@ -15,11 +15,13 @@ export const saveProfile = async (
 		throw new ValidationError("X-Session-ID header is required");
 	}
 
-	const { department, major_type, grade, admission_year, student_status, language } = req.body;
+	const { department, major_type, grade, admission_year, student_status, language,
+		grad_department, degree, grad_admission_year } = req.body;
 
 	const ragRes = await axios.post(
 		`${RAG_SERVER_URL}/profile`,
-		{ session_id: sessionId, department, major_type, grade, admission_year, student_status, language },
+		{ session_id: sessionId, department, major_type, grade, admission_year, student_status, language,
+		  grad_department, degree, grad_admission_year },  // 대학원 정보는 학부 정보와 따로 저장
 		{ headers: { 'X-Session-ID': sessionId } }
 	);
 
