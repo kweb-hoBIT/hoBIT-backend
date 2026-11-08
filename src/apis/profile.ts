@@ -66,7 +66,7 @@ export const getClosingNotices = async (req: Request, res: Response) => {
 	try {
 		const sessionId = req.headers['x-session-id'] as string | undefined;
 		const ragRes = await axios.get(`${RAG_SERVER_URL}/notices/closing`, {
-			params: { days: 7, limit: 4 },
+			params: { days: 7, limit: 4, program: req.query?.['program'] === 'graduate' ? 'graduate' : 'undergraduate' },
 			headers: sessionId ? { 'X-Session-ID': sessionId } : {},
 			timeout: 3000,
 		});

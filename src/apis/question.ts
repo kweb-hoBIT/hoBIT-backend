@@ -10,7 +10,7 @@ import {
 	QuestionResponse,
 	ValidationError,
 } from '../types';
-import { OfficialFaq, RecItem, RelatedNotice } from '../types/question';
+import { OfficialFaq, Program, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
 import { questionLimited } from '../middleware/question_limit';
 
@@ -18,6 +18,10 @@ import { questionLimited } from '../middleware/question_limit';
 // 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const isTestRun = (req: Request) => req.headers['x-no-log'] === '1' && LOOPBACK.has(req.ip ?? '');
+
+// 화면의 학부/대학원 스위치 (본문 또는 ?program=) — 모르는 값은 학부
+export const programOf = (req: Request): Program =>
+	(req.body?.program ?? req.query?.['program']) === 'graduate' ? 'graduate' : 'undergraduate';
 
 const RAG_SERVER_URL = envs.RAG_SERVER_URL ?? 'http://localhost:8000';
 const SOURCE_SCORE_THRESHOLD = 0.01;  // RRF 점수 기준 (최대 ~0.033), 이전 cosine 기준(0.42)에서 변경
@@ -47,7 +51,8 @@ type ClassifyOutcome =
 	    classifiedBy: string; topic: string | null };
 
 /** 1·2단계: 의도 분류 → 인사·스몰톡·막는 프로필 질문이면 바로 응답, 아니면 RAG로 보낼 정보 반환 */
-async function classifyStep(question: string, language: QuestionRequest['language'], sessionId?: string): Promise<ClassifyOutcome> {
+async function classifyStep(question: string, language: QuestionRequest['language'], sessionId?: string,
+	program: Program = 'undergraduate'): Promise<ClassifyOutcome> {
 	// ── 1. 의도 분류 (오탈자 교정 + 키워드 추출 + intent) ──────────────
 	let intent = 'academic';
 	let correctedQuestion = question;
@@ -96,7 +101,8 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 		// 막는 질문 (검색 전): 문서를 고르는 데 꼭 필요한 학과·학번만 먼저 묻는다.
 		// 학년·학적·전공유형 등은 답변을 막지 않고, 답변 뒤 근거 문서 기준으로 follow-up 카드로 묻는다.
 		// (classify LLM의 required_profile 예측은 호출마다 달라질 수 있어 이 기준을 코드로 고정)
-		if (intent === 'academic' && requiredProfile.length > 0) {
+		// 대학원 모드는 묻지 않음 — 학과·학번별로 나뉘는 교육과정표·졸업요건은 학부 자료 (대학원 문서는 학번별로 나뉘지 않음)
+		if (program !== 'graduate' && intent === 'academic' && requiredProfile.length > 0) {
 			const missingFromClassify = requiredProfile.filter((field) => {
 				if (!BLOCKING_PROFILE_FIELDS.includes(field)) return false;
 				if (field === 'admission_year' && hardFilters['query_year']) return false;
@@ -598,6 +604,8 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 		faqs: [llmFaq],
 		...makeFlags({ followup_fields: followupFields, official_faqs: officialFaqs,
 			recommendations: ragData.recommendations ?? [], related_notices: ragData.related_notices ?? [] }),
+		audience: ragData.audience === 'graduate' ? 'graduate' : 'undergraduate',
+		audience_by: ragData.audience_by ?? 'default',
 		id: -1,
 	} as QuestionResponse;
 }
@@ -749,7 +757,7 @@ export const question = async (
 	}
 
 	try {
-		const outcome = await classifyStep(question, language, sessionId);
+		const outcome = await classifyStep(question, language, sessionId, programOf(req));
 		if (outcome.kind === 'early') {
 			res.status(200).json(await withQueryRecommendations(outcome.body, question, sessionId));
 			return;
@@ -759,7 +767,7 @@ export const question = async (
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req) },
 			{ headers: ragHeaders(sessionId) }
 		);
 		const logId = testRun ? -1 : await logQuestion(question, language, ragRes.data, startedAt, outcome);
@@ -800,7 +808,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	res.on('close', () => abort.abort());
 
 	try {
-		const outcome = await classifyStep(question, language, sessionId);
+		const outcome = await classifyStep(question, language, sessionId, programOf(req));
 		if (outcome.kind === 'early') {
 			send('done', await withQueryRecommendations(outcome.body, question, sessionId));
 			res.end();
@@ -811,7 +819,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req) },
 			{ headers: ragHeaders(sessionId), responseType: 'stream', signal: abort.signal }
 		);
 
@@ -853,7 +861,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 /** 대화 시작 화면 — 요즘 많이 묻는 질문 (RAG가 Redis에 10분 캐시) */
 export const recommendStart = async (_req: Request, res: Response) => {
 	try {
-		const ragRes = await axios.get(`${RAG_SERVER_URL}/recommend/start`, { timeout: 3000 });
+		const ragRes = await axios.get(`${RAG_SERVER_URL}/recommend/start`, { params: { program: programOf(_req) }, timeout: 3000 });
 		res.status(200).json(ragRes.data);
 	} catch (error: any) {
 		console.warn('[Recommend] 시작 화면 추천 실패:', error?.message ?? error);

@@ -4,7 +4,10 @@ export type QuestionRequest = {
   question: string;
   language: QuestionLanguage;
   standalone?: boolean; // 추천 칩에서 보낸 질문 — 앞 대화와 합쳐 검색하지 않음
+  program?: Program;    // 화면의 학부/대학원 스위치
 };
+
+export type Program = 'undergraduate' | 'graduate';
 
 export type QuestionAfterRequest = {
   question: string;
@@ -23,6 +26,8 @@ export type QuestionResponse = {
   official_faqs: OfficialFaq[]; // "공식 답변 보기" 칩 — FAQ id로 바로 조회
   recommendations: RecItem[];   // 답변 아래 "이어서 많이 묻는 질문" (SPRINT 추천)
   related_notices?: RelatedNotice[]; // 답변 아래 "관련 공지" — 질문 주제와 맞고 아직 신청할 수 있는 공지
+  audience?: Program;                // 이 답변의 기준 (학부·대학원) — 스위치와 다르면 화면에 표시
+  audience_by?: 'question' | 'setting' | 'default';
   id: number;
 };
 
