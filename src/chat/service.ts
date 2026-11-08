@@ -12,12 +12,16 @@ import type { CheckedFile } from './attachments';
  * 채팅 업무 규칙 (DB) — 소켓·HTTP와 분리 (같은 규칙을 테스트에서 바로 확인)
  */
 export type Mode = 'staff' | 'senior';
+/** 학부/대학원 (학생 화면의 스위치와 같은 값) — 모르는 값은 학부로 */
+export type Program = 'undergraduate' | 'graduate';
+export const normalizeProgram = (raw: unknown): Program => (raw === 'graduate' || raw === 'grad' ? 'graduate' : 'undergraduate');
 export type Status = 'waiting' | 'active' | 'closed';
 export type Viewer = { kind: 'student'; email: string } | { kind: 'agent'; agent: AgentClaims };
 
 export type SessionDTO = {
 	id: string;
 	mode: Mode;
+	program: Program; // 학부/대학원 — 대학원이면 담당자 화면에 배지
 	status: Status;
 	studentEmail: string;
 	language: string;
@@ -281,6 +285,7 @@ export class ChatService {
 		return {
 			id: String(r['id']),
 			mode: r['mode'] as Mode,
+			program: normalizeProgram(r['program']),
 			status: r['status'] as Status,
 			studentEmail: maskForSenior ? maskEmail(email) : email,
 			language: String(r['language']),
@@ -300,6 +305,11 @@ export class ChatService {
 			rating: r['rating'] === null ? null : Number(r['rating']),
 			ratingComment: (r['rating_comment'] as string | null) ?? null,
 		};
+	}
+
+	/** 과정별 문의 메일 (학부 행정팀 / 대학원 행정팀 — 환경 변수로 바꿀 수 있음) */
+	officeEmailFor(program: Program): string {
+		return program === 'graduate' ? this.config.gradOfficeEmail : this.config.officeEmail;
 	}
 
 	async getSessionRow(id: string): Promise<Row | null> {
@@ -324,16 +334,17 @@ export class ChatService {
 
 	async createSession(
 		email: string,
-		input: { mode: Mode; language: string; profile: unknown; botContext: unknown }
+		input: { mode: Mode; program: Program; language: string; profile: unknown; botContext: unknown }
 	): Promise<{ row: Row; created: boolean }> {
 		const existing = await this.openSessionOf(email);
 		if (existing) return { row: existing, created: false }; // 진행 중인 채팅이 있으면 그대로 이어감
 		const id = crypto.randomUUID();
 		await this.pool.query(
-			`INSERT INTO chat_sessions (id, mode, student_email, language, profile, bot_context) VALUES (?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO chat_sessions (id, mode, program, student_email, language, profile, bot_context) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			[
 				id,
 				input.mode,
+				input.program,
 				email,
 				input.language === 'EN' ? 'EN' : 'KO',
 				JSON.stringify(cleanProfile(input.profile)),
@@ -602,7 +613,8 @@ export class ChatService {
 	async sendOfflineMail(
 		email: string,
 		subject: string,
-		body: string
+		body: string,
+		program: Program = 'undergraduate'
 	): Promise<{ ok: true } | { ok: false; error: 'rate_limited' | 'invalid' }> {
 		const s = subject.trim().slice(0, 120);
 		const b = body.trim().slice(0, 5000);
@@ -613,7 +625,7 @@ export class ChatService {
 		);
 		if (Number(rows[0]?.['n'] ?? 0) >= LIMITS.offlinePerDay) return { ok: false, error: 'rate_limited' };
 		await this.mailer.send({
-			to: this.config.officeEmail,
+			to: this.officeEmailFor(program),
 			replyTo: email,
 			subject: `[호빗 문의] ${s}`,
 			text: `${b}\n\n— 보낸 사람: ${email} (호빗 학교 메일 인증 완료)\n이 메일에 답장하면 학생에게 전달됩니다.`,

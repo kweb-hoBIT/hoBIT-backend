@@ -125,6 +125,8 @@ const COLUMNS: [table: string, column: string, ddl: string][] = [
 	['chat_sessions', 'student_lang', 'VARCHAR(8) NULL'], // 학생이 실제로 쓰는 언어 (메시지로 판단)
 	['chat_messages', 'edited_at', 'DATETIME(3) NULL'], // 보낸 사람이 고친 시각 ("수정됨")
 	['chat_messages', 'removed_at', 'DATETIME(3) NULL'], // 보낸 사람이 지운 시각 — 내용·첨부는 실제로 지움 ("삭제된 메시지예요")
+	// 학부/대학원 — 학생 화면의 스위치(또는 학생 정보의 과정)로 정함. 문의 메일 주소·담당자 화면 배지가 따라 바뀜
+	['chat_sessions', 'program', "ENUM('undergraduate','graduate') NOT NULL DEFAULT 'undergraduate'"],
 ];
 
 async function createTables(pool: Pool) {

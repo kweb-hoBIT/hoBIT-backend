@@ -10,7 +10,8 @@ export type ChatConfig = {
 	agentSecret: string; // 관리자 백엔드와 공유 (담당자 토큰)
 	fileSecret: string;
 	emailDomain: string; // 학교 메일만 인증
-	officeEmail: string; // 운영시간 밖 메일을 받을 행정실 주소
+	officeEmail: string; // 운영시간 밖 메일을 받을 행정실 주소 (학부 행정팀)
+	gradOfficeEmail: string; // 대학원 과정 채팅의 문의 메일 (대학원 행정팀)
 	mailFrom: string;
 	smtp: { host: string; port: number; user: string; pass: string; secure: boolean } | null;
 	outboxDir: string; // SMTP가 없을 때 메일을 파일로 남기는 곳 (개발·테스트)
@@ -52,6 +53,7 @@ export function loadChatConfig(): ChatConfig {
 		fileSecret: secret('CHAT_FILE_SECRET'),
 		emailDomain: env('CHAT_EMAIL_DOMAIN') ?? 'korea.ac.kr',
 		officeEmail: env('CHAT_OFFICE_EMAIL') ?? 'cscoi@korea.ac.kr',
+		gradOfficeEmail: env('CHAT_GRAD_OFFICE_EMAIL') ?? 'infograd@korea.ac.kr',
 		mailFrom: env('CHAT_MAIL_FROM') ?? 'hoBIT <no-reply@hobit.kr>',
 		smtp: smtpHost
 			? {

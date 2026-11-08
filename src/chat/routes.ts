@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { koreanHolidays } from './holidays';
 import multer from 'multer';
 import type { ChatService, Mode, Viewer } from './service';
+import { normalizeProgram } from './service';
 import type { Row } from './db';
 import type { ChatRealtime } from './socket';
 import { checkFile, MAX_FILE_BYTES } from './attachments';
@@ -93,8 +94,9 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	// ── 상태 (누구나) ───────────────────────────────────────
 	route.get('/status', async (req, res) => {
 		const mode: Mode = req.query['mode'] === 'senior' ? 'senior' : 'staff';
+		const program = normalizeProgram(req.query['program']); // 학생 화면의 학부/대학원 스위치
 		const f = await service.getFeatures();
-		res.json({ ok: true, ...(await modeStatus(mode)), officeEmail: service.config.officeEmail, emailVerification: f.emailVerification });
+		res.json({ ok: true, ...(await modeStatus(mode)), program, officeEmail: service.officeEmailFor(program), emailVerification: f.emailVerification });
 	});
 
 	// 어떤 채팅을 쓰는지 (호빗 화면이 버튼을 보일지 정함, 누구나)
@@ -135,6 +137,7 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			session: service.toSession(row, req.viewer),
 			messages: await service.listMessages(String(row['id'])),
 			position: await service.queuePosition(row),
+			officeEmail: service.officeEmailFor(normalizeProgram(row['program'])),
 		});
 	});
 
@@ -147,8 +150,12 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			const st = await modeStatus(mode);
 			if (!st.open) return fail(res, 409, st.reason === 'disabled' ? 'disabled' : mode === 'senior' ? 'away' : 'closed_hours');
 		}
+		// 과정: 화면이 보낸 program(스위치) → 없으면 학생 정보의 과정(grad) → 학부
+		const profileProgram = (req.body?.profile as Record<string, unknown> | undefined)?.['program'];
+		const program = normalizeProgram(req.body?.program ?? profileProgram);
 		const { row, created } = await service.createSession(email, {
 			mode,
+			program,
 			language: String(req.body?.language ?? 'KO'),
 			profile: req.body?.profile,
 			botContext: req.body?.botContext,
@@ -160,6 +167,7 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			session: service.toSession(row, req.viewer),
 			messages: await service.listMessages(String(row['id'])),
 			position: await service.queuePosition(row),
+			officeEmail: service.officeEmailFor(normalizeProgram(row['program'])),
 		});
 	});
 
@@ -178,7 +186,10 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	});
 
 	route.post('/offline-email', express.json({ limit: '16kb' }), student, async (req: Authed, res) => {
-		const r = await service.sendOfflineMail(emailOf(req), String(req.body?.subject ?? ''), String(req.body?.body ?? ''));
+		// 받는 곳: 화면이 보낸 과정 → 없으면 진행 중인 채팅의 과정 → 학부 행정팀
+		const open = req.body?.program === undefined ? await service.openSessionOf(emailOf(req)) : null;
+		const program = normalizeProgram(req.body?.program ?? open?.['program']);
+		const r = await service.sendOfflineMail(emailOf(req), String(req.body?.subject ?? ''), String(req.body?.body ?? ''), program);
 		if (!r.ok) return fail(res, r.error === 'rate_limited' ? 429 : 400, r.error);
 		return res.json({ ok: true });
 	});
