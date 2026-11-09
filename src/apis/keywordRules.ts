@@ -89,12 +89,19 @@ const stem = (s: string) => {
 	return n.length >= 3 && n.endsWith('다') ? n.slice(0, -1) : n;
 };
 
-/** 질문에 대표 키워드나 연관 단어가 들어 있는 규칙 */
+/** 영어 단어·약어 (한글 없이 영문이 있는 말) — 단어 단위로 비교 ("cs"가 "physics" 안에서 걸리지 않게) */
+const isLatin = (w: string) => !/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(w) && /[a-z]/i.test(w);
+const latinRe = (w: string) =>
+	new RegExp(`(^|[^a-z0-9])${w.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}(?=[^a-z0-9]|$)`);
+
+/** 질문에 대표 키워드나 연관 단어(영어 단어·약어 포함)가 들어 있는 규칙 — 예: "CS 졸업요건" → 컴퓨터학과 규칙 */
 export async function matchKeywordRules(question: string): Promise<KeywordRule[]> {
 	const text = norm(question);
 	if (!text) return [];
+	const lower = question.toLowerCase();
 	const rules = await getKeywordRules();
 	return rules.filter((r) => [r.keyword, ...r.synonyms].some((w) => {
+		if (isLatin(w)) return w.trim().length > 0 && latinRe(w).test(lower);
 		const t = stem(w);
 		return t.length > 0 && text.includes(t);
 	}));
