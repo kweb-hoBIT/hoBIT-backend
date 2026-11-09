@@ -51,6 +51,7 @@ export type MessageDTO = {
 	translation: { text: string; lang: string } | null; // 자동 번역 (상대가 읽는 언어)
 	editedAt: string | null; // 고친 메시지
 	removed: boolean; // 지운 메시지 (내용·첨부 없음)
+	replyToId: number | null; // 답글이면 원래 메시지 id (화면이 같은 채팅의 메시지에서 찾아 인용을 보여줌)
 };
 
 export const LIMITS = {
@@ -463,11 +464,11 @@ export class ChatService {
 		sessionId: string,
 		sender: 'student' | 'agent' | 'system',
 		body: string,
-		opts: { userId?: number; name?: string; attachmentId?: string } = {}
+		opts: { userId?: number; name?: string; attachmentId?: string; replyToId?: number | null } = {}
 	): Promise<MessageDTO> {
 		const [res] = await this.pool.query<ResultSetHeader>(
-			`INSERT INTO chat_messages (session_id, sender, sender_user_id, sender_name, body, attachment_id) VALUES (?, ?, ?, ?, ?, ?)`,
-			[sessionId, sender, opts.userId ?? null, opts.name ?? null, body, opts.attachmentId ?? null]
+			`INSERT INTO chat_messages (session_id, sender, sender_user_id, sender_name, body, attachment_id, reply_to_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			[sessionId, sender, opts.userId ?? null, opts.name ?? null, body, opts.attachmentId ?? null, opts.replyToId ?? null]
 		);
 		await this.pool.query(`UPDATE chat_sessions SET last_message_at = NOW() WHERE id = ?`, [sessionId]);
 		const msgs = await this.listMessages(sessionId, { afterId: res.insertId - 1, limit: 1 });
@@ -504,7 +505,19 @@ export class ChatService {
 			translation: r['translation'] ? { text: String(r['translation']), lang: String(r['translation_lang'] ?? '') } : null,
 			editedAt: iso(r['edited_at']),
 			removed: !!r['removed_at'],
+			replyToId: r['reply_to_id'] === null || r['reply_to_id'] === undefined ? null : Number(r['reply_to_id']),
 		}));
+	}
+
+	/** 답글 대상 확인 — 같은 채팅의, 지우지 않은 학생·담당자 메시지만 (아니면 null = 그냥 보냄) */
+	async replyTarget(sessionId: string, raw: unknown): Promise<number | null> {
+		const id = Number(raw);
+		if (!Number.isInteger(id) || id <= 0) return null;
+		const [rows] = await this.pool.query<Row[]>(
+			`SELECT id FROM chat_messages WHERE id = ? AND session_id = ? AND sender <> 'system' AND removed_at IS NULL`,
+			[id, sessionId]
+		);
+		return rows.length ? id : null;
 	}
 
 	/**

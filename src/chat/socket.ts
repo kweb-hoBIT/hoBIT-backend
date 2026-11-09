@@ -214,7 +214,7 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 		});
 
 		// 메시지 보내기 — 권한, 상태, 길이, 속도, 욕설
-		socket.on('message:send', async (p: { sessionId?: string; body?: string }, ack?: Ack) => {
+		socket.on('message:send', async (p: { sessionId?: string; body?: string; replyToId?: number }, ack?: Ack) => {
 			const body = String(p?.body ?? '').trim();
 			if (!body) return ack?.({ ok: false, error: 'empty' });
 			if (body.length > LIMITS.messageChars) return ack?.({ ok: false, error: 'too_long' });
@@ -235,10 +235,11 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 				const join = await service.addMessage(String(row['id']), 'system', joinText(viewer.agent), { name: viewer.agent.name });
 				io.to(sessionRoom(String(row['id']))).emit('message', join);
 			}
+			const replyToId = p?.replyToId ? await service.replyTarget(String(row['id']), p.replyToId) : null;
 			const msg =
 				viewer.kind === 'agent'
-					? await service.addMessage(String(row['id']), 'agent', body, { userId: viewer.agent.uid, name: viewer.agent.name })
-					: await service.addMessage(String(row['id']), 'student', body);
+					? await service.addMessage(String(row['id']), 'agent', body, { userId: viewer.agent.uid, name: viewer.agent.name, replyToId })
+					: await service.addMessage(String(row['id']), 'student', body, { replyToId });
 			io.to(sessionRoom(String(row['id']))).emit('message', msg);
 			ack?.({ ok: true, message: msg });
 			void translateFor(row, msg.id, viewer.kind === 'agent' ? 'agent' : 'student', body);

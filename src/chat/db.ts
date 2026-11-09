@@ -127,6 +127,7 @@ const COLUMNS: [table: string, column: string, ddl: string][] = [
 	['chat_messages', 'removed_at', 'DATETIME(3) NULL'], // 보낸 사람이 지운 시각 — 내용·첨부는 실제로 지움 ("삭제된 메시지예요")
 	// 학부/대학원 — 학생 화면의 스위치(또는 학생 정보의 과정)로 정함. 문의 메일 주소·담당자 화면 배지가 따라 바뀜
 	['chat_sessions', 'program', "ENUM('undergraduate','graduate') NOT NULL DEFAULT 'undergraduate'"],
+	['chat_messages', 'reply_to_id', 'BIGINT NULL'], // 답글 — 어느 메시지에 답했는지 (같은 채팅 안의 메시지만)
 ];
 
 async function createTables(pool: Pool) {
