@@ -1,4 +1,4 @@
-import { checkRules, moderate } from '../../src/chat/moderation';
+import { checkAgentMessage, checkRules, moderate } from '../../src/chat/moderation';
 
 describe('메시지 욕설 검사', () => {
 	test.each([
@@ -38,6 +38,29 @@ describe('메시지 욕설 검사', () => {
 		'병원 진단서 제출해야 하나요',
 	])('보냄: %s', (text) => {
 		expect(checkRules(text).blocked).toBe(false);
+	});
+
+	test.each([
+		'바보', '바보야', '바보같은 시스템', '멍청이', '멍청하네요', '등신', '찐따', '돌대가리', '한심하네', '재수없어', '싸가지 없네',
+		'쓰레기같은 답변', '꺼지세요', '미친', '틀딱', '한남충', '바 보 야',
+		'you idiot', 'this is stupid', 'shut up', 'STFU', 'wtf is this', 'you suck', 'moron', 'dumbass',
+	])('비하·모욕 표현 막음: %s', (text) => {
+		expect(checkRules(text).blocked).toBe(true);
+	});
+
+	test.each([
+		'쓰레기통은 어디 있나요?', '한남동 캠퍼스 가는 길', '미친 듯이 바빠서 늦었어요', '개강 언제예요?', '개인정보 동의서',
+		'바보상자 같은 강의는 없나요', '분리수거 쓰레기 버리는 곳', 'Is there a dumbbell in the gym?', 'I have a question about my GPA',
+		'짜증나요 ㅠㅠ 수강신청 실패했어요', '등록금 고지서 어디서 받아요', '애미넴 공연',
+	])('일상어는 보냄: %s', (text) => {
+		expect(checkRules(text).blocked).toBe(false);
+	});
+
+	test.each(['바보', '멍청한 질문', 'shut up', '시발'])('담당자 메시지도 막음: %s', (text) => {
+		expect(checkAgentMessage(text)).toBe(true);
+	});
+	test.each(['ㅋㅋ 네 맞아요', '확인해 볼게요!', '쓰레기통은 1층에 있어요', '네 한남동이 아니라 안암이에요'])('담당자 일반 메시지는 보냄: %s', (text) => {
+		expect(checkAgentMessage(text)).toBe(false);
 	});
 
 	test.each(['ㅋㅋㅋㅋㅋㅋㅋ', 'ㅋㅋㅋ', 'ㅉㅉ', 'ㅡㅡ', ';;;', 'ㅎㅎㅎㅎㅎ'])('조롱 글자만 → 규칙으로 막음: %s', async (text) => {

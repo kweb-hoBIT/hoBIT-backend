@@ -4,7 +4,7 @@ import { Server, Socket } from 'socket.io';
 import type { ChatService, Mode, Viewer } from './service';
 import { LIMITS, joinText } from './service';
 import type { AgentClaims } from './tokens';
-import { moderate, LlmCheck } from './moderation';
+import { moderate, checkAgentMessage, LlmCheck } from './moderation';
 import { detectLang, Translator } from './translate';
 
 /**
@@ -226,6 +226,7 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 				// 배정된 담당자만 (staff는 감독 중에도 대신 답할 수 있음)
 				if (row['status'] !== 'active') return ack?.({ ok: false, error: 'not_started' });
 				if (viewer.agent.role !== 'staff' && Number(row['assigned_user_id']) !== viewer.agent.uid) return ack?.({ ok: false, error: 'forbidden' });
+				if (checkAgentMessage(body)) return ack?.({ ok: false, error: 'moderated' }); // 담당자도 욕설·비하 표현은 못 보냄
 			} else {
 				const check = await moderate(body, llm);
 				if (!check.allowed) return ack?.({ ok: false, error: 'moderated' });
@@ -254,7 +255,7 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 			if (viewer.kind === 'student') {
 				const check = await moderate(body, llm);
 				if (!check.allowed) return ack?.({ ok: false, error: 'moderated' });
-			}
+			} else if (checkAgentMessage(body)) return ack?.({ ok: false, error: 'moderated' });
 			const r = await service.editMessage(viewer, Number(p?.messageId), body);
 			if ('error' in r) return ack?.({ ok: false, error: r.error });
 			io.to(sessionRoom(r.message.sessionId)).emit('message:updated', r.message);

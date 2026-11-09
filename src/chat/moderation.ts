@@ -29,17 +29,26 @@ const CONTAINS = [
 	'니애미', '니엄마', '엠창', '창녀', '걸레년', '섹스',
 	'ㅅㅂ', 'ㅆㅂ', 'ㅂㅅ', 'ㅈㄹ', 'ㅈㄴ', 'ㅄ', 'ㅁㅊ',
 ];
+// 비하·모욕 표현 (korcen 사전에 없는 가벼운 욕: 바보·멍청이 등, 혐오 표현) — 단어 안에 들어 있으면 막음
+//  일상어와 겹치는 말은 뒤에 붙는 말까지 넣어 좁힘 ('쓰레기통'은 보냄, '쓰레기같네'는 막음 / '한남동'은 보냄, '한남충'은 막음)
+const INSULTS = [
+	'바보', '멍청', '멍텅구리', '등신', '머저리', '찐따', '찌질', '돌대가리', '닭대가리', '새대가리', '저능', '꼴통', '빡대가리', '띨띨',
+	'모지리', '얼간이', '천치', '무뇌', '뇌없', '뇌가없', '한심하', '한심한', '한심해', '재수없', '싸가지', '싹수없', '개같', '개빡', '개소리',
+	'쓰레기같', '쓰레기야', '쓰레기네', '쓰레기냐', '쓰레기새', '정신병자', '정신나간', '미친거', '미쳤냐', '미쳤나',
+	'틀딱', '한남충', '급식충', '맘충', '진지충', '설명충', '김치녀', '된장녀', '보슬아치', '애미', '애비없', '니미', '느개비', '장애새',
+];
 // 정상 단어 안에 우연히 생기는 경우 — 비교 전에 지움
-const ALLOWED = ['질병신', '병신청', '병신고', '병신체', '시바견', '시바이누', '시발점'];
-// 그 낱말 하나만 쓴 경우만 (뒤에 문장이 이어지면 일상어: "꺼져 있어요")
-const STANDALONE = ['꺼져', '꺼져라', '닥쳐', '닥쳐라', 'ㅗ', 'ㅗㅗ', 'ㅗㅗㅗ'];
-const ENGLISH = /\b(f+u+c+k+\w*|f+u+k+|sh+i+t+\w*|b+i+t+c+h+\w*|asshole\w*|bastard\w*|cunt\w*|dick(head)?s?|motherfuck\w*|retard\w*|nigg\w*|faggot\w*)\b/i;
+const ALLOWED = ['질병신', '병신청', '병신고', '병신체', '시바견', '시바이누', '시발점', '바보상자', '애미넴'];
+// 그 낱말 하나만 쓴 경우만 (뒤에 문장이 이어지면 일상어: "꺼져 있어요", "미친 듯이 바빠요")
+const STANDALONE = ['꺼져', '꺼져라', '꺼지세요', '닥쳐', '닥쳐라', '닥치세요', '미친', '미친놈아', '쓰레기', '한심', 'ㅗ', 'ㅗㅗ', 'ㅗㅗㅗ'];
+const ENGLISH =
+	/\b(f+u+c+k+\w*|f+u+k+|fck\w*|sh+i+t+\w*|b+i+t+c+h+\w*|asshole\w*|ass\s*hole|bastard\w*|cunt\w*|dick(head)?s?|motherfuck\w*|retard\w*|nigg\w*|faggot\w*|whore\w*|slut\w*|idiot\w*|stupid\w*|dumb(ass|ass\w*)?|moron\w*|imbecile\w*|loser\w*|jerk\w*|scumbag\w*|wtf|stfu|shut\s+up|you\s+suck|sucks?\s+ass|piss\s+off|screw\s+you|go\s+to\s+hell|damn\s+you)\b/i;
 
 // 가려 쓴 흔적 (예: "ㅆ*ㅂ", "시**") — 규칙으로 확정은 못 하고 LLM에 물어볼 후보
 const MASKED = /[ㄱ-ㅎ][*#@!.~_-]+[ㄱ-ㅎ]|[가-힣][*#@]{1,3}(?![가-힣*#@])|f[*#@]+k|s[*#@]+t/i;
 // 비꼼·무례일 수 있는 표현 — 문맥이 필요해서 LLM에 물어봄 (예: "ㅋㅋㅋ 일 잘하네", "어이없네")
 const RUDE_HINTS =
-	/ㅋ{2,}|ㅎ{3,}|ㅉ|ㅡㅡ|;{2,}|어이(가\s*)?없|장난(하|치)|일\s*(을\s*)?(잘|안|제대로|똑바로)|월급|세금|대단하시|잘\s*~|참\s*잘|답답하네|한심|무능|짜증|뭐\s*하는\s*(거|곳)|\?{3,}|lol|lmao|wtf|seriously\?|great job|nice job|thanks for nothing/i;
+	/ㅋ{2,}|ㅎ{3,}|ㅉ|ㅡㅡ|;{2,}|어이(가\s*)?없|장난(하|치)|일\s*(을\s*)?(잘|안|제대로|똑바로)|월급|세금|대단하시|잘\s*~|참\s*잘|답답하네|한심|무능|짜증|뭐\s*하는\s*(거|곳)|\?{3,}|lol|lmao|seriously\?|great job|nice job|thanks for nothing/i;
 // 웃음·조롱 글자만 있는 메시지 — 담당자에게 보낼 내용이 없으므로 규칙으로 바로 막음
 const ONLY_MOCKING = /^[\sㅋㅎㅉㅡ;~.!?^]+$/;
 
@@ -67,7 +76,7 @@ export function checkRules(text: string): { blocked: boolean; rude: boolean; sus
 		parts.some((p) => {
 			let s = p;
 			for (const ok of ALLOWED) s = s.split(ok).join('');
-			return CONTAINS.some((w) => s.includes(w));
+			return CONTAINS.some((w) => s.includes(w)) || INSULTS.some((w) => s.includes(w));
 		}) ||
 		(parts.length <= 2 && parts.some((p) => STANDALONE.includes(p))) ||
 		ENGLISH.test(text) ||
@@ -76,6 +85,11 @@ export function checkRules(text: string): { blocked: boolean; rude: boolean; sus
 	const t = text.trim();
 	const rude = !blocked && ONLY_MOCKING.test(t) && (/[ㅋㅎ]{3,}|ㅉ|ㅡㅡ|;{3,}/.test(t));
 	return { blocked, rude, suspicious: !blocked && !rude && (MASKED.test(text) || RUDE_HINTS.test(text)) };
+}
+
+/** 담당자(관리자 사이트) 메시지 — 욕설·비하·혐오만 규칙으로 막음 (웃음 'ㅋㅋ'·비꼼 검사, LLM은 학생 메시지만) */
+export function checkAgentMessage(text: string): boolean {
+	return checkRules(text).blocked;
 }
 
 export type ModerationResult = { allowed: boolean; reason?: 'profanity' | 'rude' | 'llm' };
