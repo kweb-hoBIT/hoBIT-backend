@@ -634,6 +634,27 @@ export class ChatService {
 		return { ok: true };
 	}
 
+	/** 채팅을 기록째 지움 — 메시지·첨부 파일(저장소에서도)·읽음 기록까지 */
+	private async purgeSessions(ids: string[]) {
+		if (!ids.length) return;
+		const [files] = await this.pool.query<Row[]>(`SELECT storage_key FROM chat_attachments WHERE session_id IN (?) AND deleted_at IS NULL`, [ids]);
+		for (const f of files) await this.storage.remove(String(f['storage_key'])).catch(() => undefined);
+		await this.pool.query(`DELETE FROM chat_attachments WHERE session_id IN (?)`, [ids]);
+		await this.pool.query(`DELETE FROM chat_messages WHERE session_id IN (?)`, [ids]);
+		await this.pool.query(`DELETE FROM chat_reads WHERE session_id IN (?)`, [ids]);
+		await this.pool.query(`DELETE FROM chat_sessions WHERE id IN (?)`, [ids]);
+	}
+
+	/** 관리자 사이트에서 채팅 기록 삭제 — 종료된 채팅만 (진행 중·대기 중은 먼저 종료). 지운 개수 */
+	async deleteClosedSessions(ids: string[]): Promise<number> {
+		const clean = [...new Set(ids.map(String))].filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 500);
+		if (!clean.length) return 0;
+		const [rows] = await this.pool.query<Row[]>(`SELECT id FROM chat_sessions WHERE id IN (?) AND status = 'closed'`, [clean]);
+		const found = rows.map((r) => String(r['id']));
+		await this.purgeSessions(found);
+		return found.length;
+	}
+
 	// ── 보관 기간 ───────────────────────────────────────────
 	/** 매일 실행: 첨부 90일, 대화 1년, 인증 코드·메일 기록 1일·1주 */
 	async runRetention(): Promise<{ files: number; sessions: number }> {
@@ -648,14 +669,7 @@ export class ChatService {
 			`SELECT id FROM chat_sessions WHERE status = 'closed' AND closed_at < NOW() - INTERVAL ${LIMITS.retentionDays} DAY`
 		);
 		const ids = expired.map((r) => String(r['id']));
-		if (ids.length) {
-			const [files] = await this.pool.query<Row[]>(`SELECT storage_key FROM chat_attachments WHERE session_id IN (?) AND deleted_at IS NULL`, [ids]);
-			for (const f of files) await this.storage.remove(String(f['storage_key'])).catch(() => undefined);
-			await this.pool.query(`DELETE FROM chat_attachments WHERE session_id IN (?)`, [ids]);
-			await this.pool.query(`DELETE FROM chat_messages WHERE session_id IN (?)`, [ids]);
-			await this.pool.query(`DELETE FROM chat_reads WHERE session_id IN (?)`, [ids]);
-			await this.pool.query(`DELETE FROM chat_sessions WHERE id IN (?)`, [ids]);
-		}
+		await this.purgeSessions(ids);
 		await this.pool.query(`DELETE FROM chat_email_codes WHERE created_at < NOW() - INTERVAL 1 DAY`);
 		await this.pool.query(`DELETE FROM chat_offline_mails WHERE created_at < NOW() - INTERVAL 7 DAY`);
 		return { files: old.length, sessions: ids.length };

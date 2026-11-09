@@ -271,6 +271,15 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 		return res.json({ ok: true, session: service.toSession(row, req.viewer), messages: await service.listMessages(String(row['id'])) });
 	});
 
+	// 채팅 기록 삭제 — 종료된 채팅만, 행정실·개발자 계정만 (메시지·첨부 파일까지 지우고 되돌릴 수 없음)
+	route.post('/agent/sessions/delete', express.json({ limit: '64kb' }), agent, staffOnly, async (req: Authed, res) => {
+		const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).map(String) : [];
+		if (!ids.length) return fail(res, 400, 'invalid');
+		const deleted = await service.deleteClosedSessions(ids);
+		console.log(`[chat] 채팅 기록 삭제 ${deleted}건 (담당자 ${agentOf(req).uid})`);
+		return res.json({ ok: true, deleted });
+	});
+
 	// 홈·헤더 요약: 대기, 내가 맡은 진행 중 채팅(안 읽음·마지막 메시지), 오늘 처리 수
 	route.get('/agent/summary', agent, async (req: Authed, res) => {
 		const me = agentOf(req);
