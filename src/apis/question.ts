@@ -13,6 +13,7 @@ import {
 import { OfficialFaq, Program, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
 import { questionLimited } from '../middleware/question_limit';
+import { checkRules } from '../chat/moderation';
 
 // 서버 안에서 돌리는 시나리오 테스트(beta.sh test) — 질문 기록·인기 질문 집계에 넣지 않음.
 // 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
@@ -736,6 +737,19 @@ function validate(body: QuestionRequest) {
 	if (!body.language) throw new ValidationError("invalid parameter, 'language' required");
 }
 
+// 욕설·비하·혐오 표현이 있는 질문 — 검색·답변 생성 없이 안내만 (채팅과 같은 규칙, 질문 기록·FAQ 후보에도 남지 않음)
+const PROFANITY_MESSAGE = {
+	ko: '욕설이나 비하 표현이 있어 답변하지 않았어요. 고운 말로 다시 물어봐 주시면 바로 도와드릴게요.',
+	en: 'I didn’t answer because the question contains rude or offensive language. Please ask again politely and I’ll help right away.',
+};
+const isOffensive = (text: string) => {
+	try {
+		return checkRules(String(text ?? '')).blocked;
+	} catch {
+		return false;
+	}
+};
+
 const LIMIT_MESSAGE = {
 	ko: '질문이 너무 많이 들어와 잠시 쉬어 가요. 1분 뒤에 다시 질문해 주세요.',
 	en: 'Too many questions in a short time. Please try again in a minute.',
@@ -753,6 +767,10 @@ export const question = async (
 	const testRun = isTestRun(req);
 	if (questionLimited(req.ip, sessionId)) {
 		res.status(200).json(errorResponse(question, language, LIMIT_MESSAGE)); // 화면이 일반 응답처럼 안내를 보여주게 200
+		return;
+	}
+	if (isOffensive(question)) {
+		res.status(200).json(errorResponse(question, language, PROFANITY_MESSAGE));
 		return;
 	}
 
@@ -799,6 +817,11 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	if (questionLimited(req.ip, sessionId)) {
 		// 스트림 화면은 done 응답만 보면 되므로 같은 형식으로 안내 (HTTP 상태는 이미 200으로 보냄)
 		send('done', errorResponse(question, language, LIMIT_MESSAGE));
+		res.end();
+		return;
+	}
+	if (isOffensive(question)) {
+		send('done', errorResponse(question, language, PROFANITY_MESSAGE));
 		res.end();
 		return;
 	}
