@@ -1,4 +1,4 @@
-import { isRagConnectionDrop } from '../../src/apis/question';
+import { isRagConnectionDrop } from '../../src/apis/ragRetry';
 
 describe('RAG 연결 끊김 판단 (다시 시도할지)', () => {
 	it('응답 전에 끊긴 연결은 다시 시도', () => {
