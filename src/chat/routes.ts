@@ -8,7 +8,10 @@ import type { ChatRealtime } from './socket';
 import { checkFile, MAX_FILE_BYTES } from './attachments';
 import type { AgentClaims } from './tokens';
 import { STUDENT_TOKEN_TTL_SEC } from './tokens';
-import { BOT_SETTING_LIMITS, DEFAULT_BOT_SETTINGS, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
+import { BOT_SETTING_LIMITS, currentBotSettings, DEFAULT_BOT_SETTINGS, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
+import { checkCrawlUrl, CRAWL_SCHEDULE, MAX_CRAWL_PAGES } from '../services/crawl_pages';
+import axios from 'axios';
+import { envs } from '../envs';
 
 /**
  * 채팅 HTTP API (/api/v0/chat) — 메시지는 소켓, 그 밖(인증·채팅 시작·첨부·설정)은 여기
@@ -22,6 +25,11 @@ const bearer = (req: Request) => {
 };
 
 const ERROR_TEXT: Record<string, string> = {
+	invalid_url: '주소를 다시 확인해 주세요 (https://로 시작하는 주소).',
+	not_school: '학교 사이트(korea.ac.kr)의 페이지만 더할 수 있어요.',
+	already_crawled: '정보대학 홈페이지는 이미 전부 수집하고 있어요.',
+	unreadable: '이 페이지에서 본문을 읽지 못했어요. 로그인이 필요하거나 내용이 그림·첨부파일뿐인 페이지일 수 있어요.',
+	rag_unavailable: '답변 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
 	invalid_email: '고려대학교 메일(@korea.ac.kr)만 인증할 수 있어요.',
 	blocked: '채팅을 이용할 수 없는 계정이에요. 행정실로 문의해 주세요.',
 	rate_limited: '요청이 너무 잦아요. 잠시 후 다시 시도해 주세요.',
@@ -34,6 +42,7 @@ const ERROR_TEXT: Record<string, string> = {
 	invalid_year: '연도를 확인해 주세요.',
 	holiday_source_unavailable: '공휴일 캘린더를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
 };
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ ok: false, error, message: ERROR_TEXT[error] ?? error });
 
 type H = (req: Authed, res: Response, next: NextFunction) => unknown;
@@ -104,7 +113,8 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	route.get('/features', async (_req, res) => {
 		const f = await service.getFeatures();
 		res.set('Cache-Control', 'no-store');
-		res.json({ ok: true, staff: f.staff, senior: f.senior, emailVerification: f.emailVerification });
+		// gradEnabled: 챗봇 설정에서 대학원 답변을 끄면 학생 화면이 학부/대학원 스위치를 숨김
+		res.json({ ok: true, staff: f.staff, senior: f.senior, emailVerification: f.emailVerification, gradEnabled: currentBotSettings().gradEnabled });
 	});
 
 	// ── 학교 메일 인증 ──────────────────────────────────────
@@ -364,6 +374,39 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	route.put('/agent/bot-settings', express.json({ limit: '8kb' }), agent, staffOnly, async (req, res) => {
 		const saved = await service.setBotSettings(req.body?.settings, agentOf(req).name);
 		return saved ? res.json(botPayload(saved)) : fail(res, 400, 'invalid');
+	});
+	// 정기 수집 — 시간표·최근 결과(RAG가 읽음)·추가한 페이지. 보기는 담당자 누구나, 바꾸기는 행정실·개발자만
+	const RAG = envs.RAG_SERVER_URL ?? 'http://localhost:8000';
+	const crawlPayload = async () => {
+		const status = await axios
+			.get(`${RAG}/crawl/status`, { timeout: 4000 })
+			.then((r) => r.data)
+			.catch(() => null); // RAG가 꺼져 있어도 목록은 보이게
+		return { ok: true, ...(await service.getCrawlPages()), schedule: CRAWL_SCHEDULE, maxPages: MAX_CRAWL_PAGES, status };
+	};
+	route.get('/agent/crawl', agent, async (_req, res) => res.json(await crawlPayload()));
+	route.put('/agent/crawl', express.json({ limit: '32kb' }), agent, staffOnly, async (req, res) => {
+		const saved = await service.setCrawlPages(req.body?.pages, agentOf(req).name);
+		if (!('pages' in saved)) return res.status(400).json({ ok: false, error: saved.error, url: (saved as { url?: string }).url });
+		return res.json(await crawlPayload());
+	});
+	// 더하기 전에 글이 잘 읽히는지 미리 보기 (RAG가 한 번 받아 본문 앞부분을 돌려줌)
+	route.post('/agent/crawl/preview', express.json({ limit: '4kb' }), agent, staffOnly, async (req, res) => {
+		const checked = checkCrawlUrl(String(req.body?.url ?? ''));
+		if ('error' in checked) return fail(res, 400, checked.error);
+		try {
+			const r = await axios.post(`${RAG}/crawl/preview`, { url: checked.url }, { timeout: 20000 });
+			return res.json({ ok: true, ...r.data });
+		} catch (e) {
+			const code = axios.isAxiosError(e) && e.response?.status === 422 ? 'unreadable' : 'rag_unavailable';
+			return fail(res, code === 'unreadable' ? 422 : 502, code);
+		}
+	});
+	// RAG 정기 수집이 서버 안에서만 부름 — 켜 둔 페이지 목록 (Caddy를 거친 요청은 IP가 학생 IP라 여기에 안 걸림)
+	route.get('/internal/crawl-pages', async (req, res) => {
+		if (!LOOPBACK.has(req.ip ?? '') || req.headers['x-forwarded-for']) return fail(res, 403, 'forbidden');
+		const { pages } = await service.getCrawlPages();
+		return res.json({ ok: true, pages: pages.filter((p) => p.enabled) });
 	});
 	route.put('/agent/settings', express.json({ limit: '16kb' }), agent, staffOnly, async (req, res) => {
 		const hours = await service.setHours(req.body?.hours);

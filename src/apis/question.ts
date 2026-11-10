@@ -14,16 +14,17 @@ import {
 import { OfficialFaq, Program, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
 import { Gate, screenQuestion } from '../middleware/abuse';
-import { ragBotOptions, refreshBotSettings } from '../services/bot_settings';
+import { currentBotSettings, ragBotOptions, refreshBotSettings } from '../services/bot_settings';
 
 // 서버 안에서 돌리는 시나리오 테스트(beta.sh test) — 질문 기록·인기 질문 집계에 넣지 않음.
 // 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const isTestRun = (req: Request) => req.headers['x-no-log'] === '1' && LOOPBACK.has(req.ip ?? '');
 
-// 화면의 학부/대학원 스위치 (본문 또는 ?program=) — 모르는 값은 학부
+// 화면의 학부/대학원 스위치 (본문 또는 ?program=) — 모르는 값은 학부.
+// 챗봇 설정에서 대학원 답변을 끄면 화면이 예전 값(대학원)을 보내도 학부로
 export const programOf = (req: Request): Program =>
-	(req.body?.program ?? req.query?.['program']) === 'graduate' ? 'graduate' : 'undergraduate';
+	currentBotSettings().gradEnabled && (req.body?.program ?? req.query?.['program']) === 'graduate' ? 'graduate' : 'undergraduate';
 
 const RAG_SERVER_URL = envs.RAG_SERVER_URL ?? 'http://localhost:8000';
 const SOURCE_SCORE_THRESHOLD = 0.01;  // RRF 점수 기준 (최대 ~0.033), 이전 cosine 기준(0.42)에서 변경

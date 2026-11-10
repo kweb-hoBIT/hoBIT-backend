@@ -8,6 +8,7 @@ import type { AgentClaims, AgentRole, Tokens } from './tokens';
 import { DEFAULT_HOURS, HoursSettings, parseHoursSettings, staffHours } from './hours';
 import type { CheckedFile } from './attachments';
 import { BotSettings, parseBotSettings, setCurrentBotSettings } from '../services/bot_settings';
+import { CrawlPage, parseCrawlPages } from '../services/crawl_pages';
 
 /**
  * 채팅 업무 규칙 (DB) — 소켓·HTTP와 분리 (같은 규칙을 테스트에서 바로 확인)
@@ -234,6 +235,28 @@ export class ChatService {
 		]);
 		setCurrentBotSettings(value); // 이 서버의 질문 검사·RAG 요청에 바로 반영
 		return this.getBotSettings();
+	}
+
+	// ── 정기 수집에 더한 페이지 (services/crawl_pages.ts) ─────────────
+	async getCrawlPages(): Promise<{ pages: CrawlPage[]; updatedAt: string | null; updatedBy: string | null }> {
+		const [rows] = await this.pool.query<Row[]>(`SELECT value, updated_at FROM chat_settings WHERE name = 'crawl'`);
+		const raw = json(rows[0]?.['value']) as Record<string, unknown> | null;
+		const parsed = parseCrawlPages(raw?.['pages'] ?? []);
+		const at = rows[0]?.['updated_at'];
+		return {
+			pages: 'pages' in parsed ? parsed.pages : [],
+			updatedAt: at ? new Date(at as string).toISOString() : null,
+			updatedBy: typeof raw?.['updatedBy'] === 'string' ? (raw['updatedBy'] as string) : null,
+		};
+	}
+
+	async setCrawlPages(raw: unknown, by: string) {
+		const parsed = parseCrawlPages(raw);
+		if (!('pages' in parsed)) return parsed;
+		await this.pool.query(`INSERT INTO chat_settings (name, value) VALUES ('crawl', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)`, [
+			JSON.stringify({ pages: parsed.pages, updatedBy: by.slice(0, 45) }),
+		]);
+		return this.getCrawlPages();
 	}
 
 	// ── 학교 메일 인증 ───────────────────────────────────────

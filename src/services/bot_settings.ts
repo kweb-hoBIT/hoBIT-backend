@@ -16,6 +16,8 @@ export type BotSettings = {
 	blockFarPlace: boolean; // 학교 밖 다른 지역·내 위치 주변 장소 질문 막기
 	// 학식
 	menuEnabled: boolean;
+	// 대학원 — 끄면 학부 기준으로만 답함 (학생 화면의 학부/대학원 스위치도 숨김)
+	gradEnabled: boolean;
 	// 과다 사용
 	sessionPerMin: number;
 	sessionPerDay: number;
@@ -42,6 +44,7 @@ export const DEFAULT_BOT_SETTINGS: BotSettings = {
 	placeSize: 8,
 	blockFarPlace: true,
 	menuEnabled: true,
+	gradEnabled: true,
 	sessionPerMin: 20,
 	sessionPerDay: 300,
 	ipPerMin: 120,
@@ -76,7 +79,7 @@ export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step
 export const SUSPEND_MINUTES_LIMIT = { min: 1, max: 10_080, step: 1 }; // 최대 7일
 
 const NUM_KEYS = Object.keys(BOT_SETTING_LIMITS) as NumKey[];
-const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'blockPersonalUse'];
+const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'gradEnabled', 'blockPersonalUse'];
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const roundStep = (v: number, step: number) => (step < 1 ? Math.round(v * 100) / 100 : Math.round(v));
