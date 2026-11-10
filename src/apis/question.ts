@@ -825,6 +825,12 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			res.end();
 			return;
 		}
+		// 화면의 진행 체크 — 첫 단계 '질문 이해' (무엇으로 찾는지: 분류 키워드나 고친 질문)
+		{
+			const en = String(language).toUpperCase() === 'EN';
+			const detail = outcome.keywords.slice(0, 3).join(', ') || outcome.correctedQuestion.slice(0, 24);
+			send('progress', { key: 'understand', label: en ? 'Understood question' : '질문 이해', detail });
+		}
 		const ragRes = await postRag(
 			`${RAG_SERVER_URL}/chat/stream`,
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
@@ -846,7 +852,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 				const event = /^event: (.*)$/m.exec(raw)?.[1]?.trim();
 				const data = /^data: (.*)$/m.exec(raw)?.[1];
 				if (!event || data === undefined) continue;
-				if (event === 'delta' || event === 'meta') {
+				if (event === 'delta' || event === 'meta' || event === 'progress') {
 					res.write(`event: ${event}\ndata: ${data}\n\n`);  // 그대로 전달
 				} else if (event === 'done') {
 					doneData = JSON.parse(data);
