@@ -1,4 +1,4 @@
-import { detectLang, guardedTranslator, looksLikeReply, quickTranslate } from '../../src/chat/translate';
+import { cachingTranslator, detectLang, guardedTranslator, looksLikeReply, quickTranslate } from '../../src/chat/translate';
 
 describe('메시지 언어 판단 (규칙)', () => {
 	test.each([
@@ -50,5 +50,32 @@ describe('짧은 인사·대답은 규칙으로, 대답처럼 나온 번역은 �
 		expect(calls).toEqual([]);
 		expect(await chatty('yo', 'en', 'ko')).toBe('');
 		expect(calls).toEqual(['yo']);
+	});
+});
+
+describe('번역 캐시 — 담당자가 미리보기로 본 번역이 그대로 학생에게', () => {
+	test('같은 글은 번역기를 다시 부르지 않고 같은 결과', async () => {
+		let n = 0;
+		const t = cachingTranslator(async (text) => `EN(${text}) #${++n}`);
+		const preview = await t('학번을 알려주세요.', 'ko', 'en');
+		expect(await t('학번을 알려주세요.', 'ko', 'en')).toBe(preview);
+		expect(n).toBe(1);
+		await t('다른 문장이에요.', 'ko', 'en');
+		expect(n).toBe(2);
+	});
+
+	test('빈 결과(대답처럼 보여 버린 번역)는 저장하지 않음 — 보낼 때 다시 시도', async () => {
+		let n = 0;
+		const t = cachingTranslator(async () => (++n === 1 ? '' : 'Hello'));
+		expect(await t('안녕', 'ko', 'en')).toBe('');
+		expect(await t('안녕', 'ko', 'en')).toBe('Hello');
+	});
+
+	test('오래되면 다시 번역, 개수 제한', async () => {
+		let n = 0;
+		const t = cachingTranslator(async (text) => `${text}-${++n}`, { ttlMs: 0, max: 2 });
+		await t('가', 'ko', 'en');
+		await new Promise((r) => setTimeout(r, 2));
+		expect(await t('가', 'ko', 'en')).toBe('가-2');
 	});
 });

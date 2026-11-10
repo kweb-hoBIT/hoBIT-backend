@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { ResultSetHeader } from 'mysql2/promise';
 
-import { matchKeywordRules } from './keywordRules';
+import { matchKeywordRules, ruleSearchTerms } from './keywordRules';
 import { Pool } from '../../config/connectDB';
 import {
 	ErrorResponse,
@@ -12,8 +12,7 @@ import {
 } from '../types';
 import { OfficialFaq, Program, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
-import { questionLimited } from '../middleware/question_limit';
-import { checkRules } from '../chat/moderation';
+import { Gate, screenQuestion } from '../middleware/abuse';
 
 // 서버 안에서 돌리는 시나리오 테스트(beta.sh test) — 질문 기록·인기 질문 집계에 넣지 않음.
 // 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
@@ -156,9 +155,11 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 
 	// 관리자가 등록한 키워드 규칙: 연관 단어("이공계")가 있으면 대표 키워드("입시")를 검색어에 더하고,
 	// 고정 FAQ는 근거로 함께 넘김 (영어 질문은 분류 단계의 한국어 키워드로도 비교)
+	// 영어 질문이면 영어 대표 키워드("cs" → computer science)를 검색어에 더함
 	const rules = await matchKeywordRules(`${question} ${correctedQuestion} ${keywords.join(' ')}`);
-	const ruleKeywords = rules.map((r) => r.keyword).filter((k) => !keywords.includes(k));
-	const pinnedFaqs = Array.from(new Set(rules.flatMap((r) => r.pinned.map((p) => p.question_ko)))).slice(0, MAX_PINNED_FAQS);
+	const ruleTerms = ruleSearchTerms(rules, language, MAX_PINNED_FAQS);
+	const ruleKeywords = ruleTerms.keywords.filter((k) => !keywords.includes(k));
+	const pinnedFaqs = ruleTerms.pinnedFaqs;
 	// 관리자가 정한 '먼저 찾아볼 곳' — RAG가 이 출처에서 먼저 찾아 근거 앞에 둠
 	const routeSources = Array.from(new Set(rules.flatMap((r) => r.sources ?? []))).slice(0, 8);
 	if (rules.length) console.log(`[keyword_rules] ${rules.map((r) => r.keyword).join(', ')} → 고정 FAQ ${pinnedFaqs.length}개, 찾아볼 곳 ${routeSources.length}개`);
@@ -733,27 +734,16 @@ function ragHeaders(sessionId?: string) {
 }
 
 function validate(body: QuestionRequest) {
-	if (!body.question) throw new ValidationError("invalid parameter, 'question' required");
+	if (!body.question || typeof body.question !== 'string') throw new ValidationError("invalid parameter, 'question' required");
 	if (!body.language) throw new ValidationError("invalid parameter, 'language' required");
 }
 
-// 욕설·비하·혐오 표현이 있는 질문 — 검색·답변 생성 없이 안내만 (채팅과 같은 규칙, 질문 기록·FAQ 후보에도 남지 않음)
-const PROFANITY_MESSAGE = {
-	ko: '욕설이나 비하 표현이 있어 답변하지 않았어요. 고운 말로 다시 물어봐 주시면 바로 도와드릴게요.',
-	en: 'I didn’t answer because the question contains rude or offensive language. Please ask again politely and I’ll help right away.',
-};
-const isOffensive = (text: string) => {
-	try {
-		return checkRules(String(text ?? '')).blocked;
-	} catch {
-		return false;
-	}
-};
-
-const LIMIT_MESSAGE = {
-	ko: '질문이 너무 많이 들어와 잠시 쉬어 가요. 1분 뒤에 다시 질문해 주세요.',
-	en: 'Too many questions in a short time. Please try again in a minute.',
-};
+// 횟수 초과·정지·욕설·공격 입력·개인 AI 요청 — 검색·답변 생성 없이 안내만 (질문 기록·FAQ 후보에도 남지 않음, 규칙은 middleware/abuse.ts)
+// 화면이 일반 응답처럼 말풍선을 보여주도록 기존 오류 응답 형식 + moderation(경고창·입력 잠금용)
+const gateResponse = (question: string, language: QuestionRequest['language'], gate: Gate): QuestionResponse => ({
+	...errorResponse(question.slice(0, 300), language, gate.message),
+	moderation: gate.moderation,
+});
 
 /** 한 번에 응답 (기존 클라이언트 호환) */
 export const question = async (
@@ -765,12 +755,9 @@ export const question = async (
 	const sessionId = req.headers['x-session-id'] as string | undefined;
 	const startedAt = Date.now();
 	const testRun = isTestRun(req);
-	if (questionLimited(req.ip, sessionId)) {
-		res.status(200).json(errorResponse(question, language, LIMIT_MESSAGE)); // 화면이 일반 응답처럼 안내를 보여주게 200
-		return;
-	}
-	if (isOffensive(question)) {
-		res.status(200).json(errorResponse(question, language, PROFANITY_MESSAGE));
+	const gate = screenQuestion({ text: question, ip: req.ip, sessionId });
+	if (gate) {
+		res.status(200).json(gateResponse(question, language, gate)); // 화면이 일반 응답처럼 안내를 보여주게 200
 		return;
 	}
 
@@ -814,24 +801,21 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 	const startedAt = Date.now();
 	const testRun = isTestRun(req);
-	if (questionLimited(req.ip, sessionId)) {
+	const gate = screenQuestion({ text: question, ip: req.ip, sessionId });
+	if (gate) {
 		// 스트림 화면은 done 응답만 보면 되므로 같은 형식으로 안내 (HTTP 상태는 이미 200으로 보냄)
-		send('done', errorResponse(question, language, LIMIT_MESSAGE));
-		res.end();
-		return;
-	}
-	if (isOffensive(question)) {
-		send('done', errorResponse(question, language, PROFANITY_MESSAGE));
+		send('done', gateResponse(question, language, gate));
 		res.end();
 		return;
 	}
 
-	// 사용자가 창을 닫으면 RAG 스트림도 끊어 LLM 낭비를 줄인다
+	// 사용자가 '답변 중지'를 누르거나 창을 닫으면(연결 끊김) RAG 스트림도 끊어 LLM 낭비를 줄인다
 	const abort = new AbortController();
 	res.on('close', () => abort.abort());
 
 	try {
 		const outcome = await classifyStep(question, language, sessionId, programOf(req));
+		if (abort.signal.aborted) return; // 분류하는 동안 중지됨 — 답변 생성(RAG)을 시작하지 않음
 		if (outcome.kind === 'early') {
 			send('done', await withQueryRecommendations(outcome.body, question, sessionId));
 			res.end();

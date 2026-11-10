@@ -2,7 +2,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { koreanHolidays } from './holidays';
 import multer from 'multer';
 import type { ChatService, Mode, Viewer } from './service';
-import { normalizeProgram } from './service';
+import { LIMITS, normalizeProgram } from './service';
 import type { Row } from './db';
 import type { ChatRealtime } from './socket';
 import { checkFile, MAX_FILE_BYTES } from './attachments';
@@ -307,6 +307,18 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			avgRatingToday: today[0]?.['avg'] === null || today[0]?.['avg'] === undefined ? null : Number(Number(today[0]['avg']).toFixed(1)),
 			seniorsAvailable: realtime.presence.seniorsAvailable(),
 		});
+	});
+
+	// 번역 미리보기 — 영어로 받는 학생에게 보낼 답변이 어떻게 번역될지 (보내기 전, 같은 번역이 그대로 감)
+	route.post('/agent/sessions/:id/translate-preview', express.json({ limit: '16kb' }), agent, async (req: Authed, res) => {
+		const body = String(req.body?.body ?? '').trim();
+		if (!body || body.length > LIMITS.messageChars) return fail(res, 400, 'invalid');
+		const row = await service.getSessionRow(String(req.params['id']));
+		if (!row || !service.canAccess(req.viewer!, row)) return fail(res, 404, 'not_found');
+		if (row['status'] === 'closed') return fail(res, 409, 'closed');
+		const r = await realtime.previewTranslation(agentOf(req), row, body);
+		if (r === 'rate_limited') return fail(res, 429, 'rate_limited');
+		return res.json({ ok: true, needed: r.needed, translation: r.text });
 	});
 
 	route.get('/agent/presence', agent, (_req, res) =>

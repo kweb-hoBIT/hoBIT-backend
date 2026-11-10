@@ -102,9 +102,10 @@ export function cleanContext(raw: unknown): { q: string; a: string }[] | null {
 
 /**
  * 학생이 채팅 시작 때 입력한 정보 — 과정(학부 undergrad / 대학원 grad)·이름·학번·학과·학적 상태
- * (예전 호빗 '내 정보' 항목 grade·admission_year·major_type도 받아 둠)
+ * (호빗 '내 정보' 항목 grade·admission_year·major_type·degree도 받아 둠 — 학생 화면이 프로필에서 채워 보냄)
  */
-const PROFILE_KEYS = ['program', 'name', 'student_id', 'department', 'student_status', 'grade', 'admission_year', 'major_type'];
+// degree(석사·박사)는 대학원생의 호빗 '내 정보'에서 함께 옴
+const PROFILE_KEYS = ['program', 'name', 'student_id', 'department', 'student_status', 'grade', 'admission_year', 'major_type', 'degree'];
 export const PROGRAMS = ['undergrad', 'grad'] as const;
 export function cleanProfile(raw: unknown): Record<string, string> | null {
 	if (!raw || typeof raw !== 'object') return null;

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import OpenAI from 'openai';
 
 /**
@@ -119,4 +120,28 @@ export function createTranslator(): Translator | undefined {
 	const openaiKey = process.env['OPENAI_API_KEY'] || process.env['OPENAI_KEY'];
 	if (openaiKey) return guardedTranslator(openai(openaiKey));
 	return undefined;
+}
+
+/**
+ * 같은 글은 같은 번역으로 (메모리, 30분·최대 500개)
+ *  - 담당자가 보내기 전에 본 번역 미리보기와 학생이 받는 번역이 같게 — 미리보기 때 만든 번역을 보낼 때 그대로 씀
+ *  - 화면이 보낸 번역을 믿지 않고 서버가 만든 것만 저장 (빈 결과·실패는 저장 안 함 → 보낼 때 다시 시도)
+ */
+export function cachingTranslator(inner: Translator, opts: { ttlMs?: number; max?: number } = {}): Translator {
+	const ttl = opts.ttlMs ?? 30 * 60_000;
+	const max = opts.max ?? 500;
+	const cache = new Map<string, { text: string; at: number }>();
+	const key = (text: string, from: Lang, to: Lang) => `${from}>${to}:${crypto.createHash('sha256').update(text.trim()).digest('hex')}`;
+	return async (text, from, to) => {
+		const k = key(text, from, to);
+		const hit = cache.get(k);
+		if (hit && Date.now() - hit.at <= ttl) return hit.text;
+		cache.delete(k);
+		const out = await inner(text, from, to);
+		if (out.trim()) {
+			if (cache.size >= max) cache.delete(cache.keys().next().value as string); // 가장 오래된 것부터
+			cache.set(k, { text: out, at: Date.now() });
+		}
+		return out;
+	};
 }

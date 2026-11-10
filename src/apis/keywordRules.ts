@@ -9,12 +9,17 @@ import { Pool } from '../../config/connectDB';
  *   예) 입시 ← 수시, 정시, 이공계, 계열  /  고정: "수시, 정시 등 입학(입시) 관련 사항이 궁금해!"
  * - 입력창 추천(자동완성): 화면이 GET /keyword_rules로 받아 브라우저에서 바로 적용
  * - 질문: 연관 단어가 있으면 대표 키워드를 검색어에 더하고, 고정 FAQ를 RAG 근거로 넘김 (matchKeywordRules)
+ * 영어 모드: keyword_en(영어 대표 키워드) + synonyms_en(영어 단어·약어)  예) computer science ← cs, comp sci
+ *   영어 질문이면 keyword_en을(없으면 대표 키워드를) 검색어에 더함. 입력창 추천의 고정 FAQ는 영어 질문으로 (화면)
+ *   예전처럼 synonyms에 섞인 영어 단어도 그대로 비교 (관리자가 다시 저장하면 synonyms_en으로 옮겨짐)
  * 규칙 기반 — LLM 호출 없음. 1분 캐시 (관리자가 고친 내용은 1분 안에 반영)
  */
 
 export type KeywordRule = {
 	keyword: string;
+	keyword_en: string; // 영어 대표 키워드 (없으면 '')
 	synonyms: string[];
+	synonyms_en: string[]; // 영어 단어·약어
 	pinned: { faq_id: number; question_ko: string; question_en: string }[];
 	sources: string[]; // 먼저 찾아볼 곳 — RAG 출처 이름 (RAG GET /search/sources 목록)
 };
@@ -40,7 +45,9 @@ async function fetchRules(): Promise<KeywordRule[]> {
 		);
 		const rules = rows.map((r) => ({
 			keyword: String(r['keyword']),
+			keyword_en: String(r['keyword_en'] ?? '').trim(), // 칸이 없던 예전 DB면 ''
 			synonyms: parseList(r['synonyms']).map(String),
+			synonyms_en: parseList(r['synonyms_en']).map(String).filter(Boolean),
 			ids: parseList(r['pinned_faq_ids']).map(Number).filter(Number.isInteger),
 			sources: parseList(r['search_sources']).map(String).filter(Boolean), // 칸이 없던 예전 DB면 빈 목록
 		}));
@@ -55,7 +62,9 @@ async function fetchRules(): Promise<KeywordRule[]> {
 		}
 		return rules.map((r) => ({
 			keyword: r.keyword,
+			keyword_en: r.keyword_en,
 			synonyms: r.synonyms,
+			synonyms_en: r.synonyms_en,
 			// 지워진 FAQ는 건너뜀
 			pinned: r.ids.filter((id) => faqs.has(id)).map((id) => ({ faq_id: id, ...faqs.get(id)! })),
 			sources: r.sources,
@@ -94,17 +103,39 @@ const isLatin = (w: string) => !/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(w) && /[a-z]/i.te
 const latinRe = (w: string) =>
 	new RegExp(`(^|[^a-z0-9])${w.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}(?=[^a-z0-9]|$)`);
 
-/** 질문에 대표 키워드나 연관 단어(영어 단어·약어 포함)가 들어 있는 규칙 — 예: "CS 졸업요건" → 컴퓨터학과 규칙 */
-export async function matchKeywordRules(question: string): Promise<KeywordRule[]> {
+/** 규칙의 모든 단어 — 한국어·영어 어느 쪽 질문이든 다 비교 ("CS 졸업요건"도 컴퓨터학과 규칙에 걸리게) */
+export const ruleWords = (r: Pick<KeywordRule, 'keyword' | 'keyword_en' | 'synonyms' | 'synonyms_en'>) =>
+	[r.keyword, r.keyword_en, ...r.synonyms, ...(r.synonyms_en ?? [])].filter((w) => w && w.trim());
+
+/** 질문에 걸리는 규칙만 (DB 없이 — 테스트용으로 따로) */
+export function filterKeywordRules<R extends KeywordRule>(rules: R[], question: string): R[] {
 	const text = norm(question);
 	if (!text) return [];
 	const lower = question.toLowerCase();
-	const rules = await getKeywordRules();
-	return rules.filter((r) => [r.keyword, ...r.synonyms].some((w) => {
-		if (isLatin(w)) return w.trim().length > 0 && latinRe(w).test(lower);
+	return rules.filter((r) => ruleWords(r).some((w) => {
+		if (isLatin(w)) return latinRe(w).test(lower);
 		const t = stem(w);
 		return t.length > 0 && text.includes(t);
 	}));
+}
+
+/** 질문에 대표 키워드나 연관 단어(영어 대표 키워드·영어 단어 포함)가 들어 있는 규칙 — 예: "CS 졸업요건" → 컴퓨터학과 규칙 */
+export async function matchKeywordRules(question: string): Promise<KeywordRule[]> {
+	if (!norm(question)) return [];
+	return filterKeywordRules(await getKeywordRules(), question);
+}
+
+/**
+ * 걸린 규칙 → 검색어에 더할 대표 키워드 · 고정 FAQ 질문
+ *   한국어 질문: 대표 키워드 / 영어 질문: 영어 대표 키워드(없으면 대표 키워드)
+ *   고정 FAQ는 언어와 상관없이 한국어 질문 — RAG가 "faq:mysql_faq::{한국어 질문}"으로 문서를 찾음 (hoBIT-rag main.py)
+ */
+export function ruleSearchTerms(rules: KeywordRule[], language: 'KO' | 'EN', maxPinned: number): { keywords: string[]; pinnedFaqs: string[] } {
+	const en = language === 'EN';
+	return {
+		keywords: Array.from(new Set(rules.map((r) => (en ? r.keyword_en || r.keyword : r.keyword)))),
+		pinnedFaqs: Array.from(new Set(rules.flatMap((r) => r.pinned.map((p) => p.question_ko)))).filter(Boolean).slice(0, maxPinned),
+	};
 }
 
 /** GET /keyword_rules — 입력창 추천에 쓰는 규칙 (화면에서 캐시) */

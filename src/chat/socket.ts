@@ -5,7 +5,7 @@ import type { ChatService, Mode, Viewer } from './service';
 import { LIMITS, joinText } from './service';
 import type { AgentClaims } from './tokens';
 import { moderate, checkAgentMessage, LlmCheck } from './moderation';
-import { detectLang, Translator } from './translate';
+import { cachingTranslator, detectLang, Translator } from './translate';
 
 /**
  * 실시간 연결 (socket.io)
@@ -68,7 +68,9 @@ class RateLimiter {
 	}
 }
 
-export function attachSocket(httpServer: HttpServer, service: ChatService, llm?: LlmCheck, translator?: Translator) {
+export function attachSocket(httpServer: HttpServer, service: ChatService, llm?: LlmCheck, rawTranslator?: Translator) {
+	// 같은 글은 같은 번역 — 담당자가 미리보기로 본 번역이 그대로 학생에게 감
+	const translator = rawTranslator ? cachingTranslator(rawTranslator) : undefined;
 	const { allowedOrigins } = service.config;
 	// 브라우저가 아닌 클라이언트(테스트 등)는 Origin이 없음 — 그때는 토큰으로만 확인
 	const originOk = (origin: string | undefined) =>
@@ -84,6 +86,10 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 	});
 	const presence = new Presence();
 	const limiter = new RateLimiter();
+	const previewLimiter = new RateLimiter();
+
+	/** 담당자 한국어 답변을 영어로 옮길 채팅인지 — 영어 화면으로 시작했거나, 학생이 영어로 쓴 적이 있을 때 */
+	const studentReadsEnglish = (row: Record<string, unknown>) => row['language'] === 'EN' || row['student_lang'] === 'en';
 
 	// ── 연결할 때 토큰 확인 ─────────────────────────────────
 	io.use((socket, next) => {
@@ -150,7 +156,7 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 				// 영어 화면으로 시작한 학생은 중간에 한국어로 써도 계속 영어로 (학생 화면에서 원문도 볼 수 있음)
 				// 한국어 화면 학생은 영어로 쓴 적이 있을 때만
 				const fresh = await service.getSessionRow(sessionId);
-				if (row['language'] === 'EN' || fresh?.['student_lang'] === 'en') target = 'en';
+				if (studentReadsEnglish({ ...row, student_lang: fresh?.['student_lang'] })) target = 'en';
 			}
 			if (!target || !lang) return;
 			const text = (await translator(body, lang, target)).trim();
@@ -353,6 +359,22 @@ export function attachSocket(httpServer: HttpServer, service: ChatService, llm?:
 		},
 		announceSessionUpdate: emitSessionUpdate,
 		announceClosed,
+		/**
+		 * 담당자 번역 미리보기 (보내기 전) — 보낼 때와 같은 번역기·캐시를 써서 학생이 받는 번역과 같음
+		 *  needed=false: 번역하지 않는 채팅이거나 한국어가 아닌 글 (보내도 번역 안 됨)
+		 */
+		async previewTranslation(agent: AgentClaims, row: Record<string, unknown>, body: string): Promise<{ needed: boolean; text: string | null } | 'rate_limited'> {
+			if (!translator || !studentReadsEnglish(row) || detectLang(body) !== 'ko') return { needed: false, text: null };
+			// 입력이 멈출 때마다 오므로 메시지보다 넉넉히 — 담당자마다 1분에 30번
+			if (!previewLimiter.allow(`agent:${agent.uid}`, 30, 60_000)) return 'rate_limited';
+			try {
+				const text = (await translator(body, 'ko', 'en')).trim();
+				return { needed: true, text: text && text !== body ? text : null };
+			} catch (e) {
+				console.error('[chat] 번역 미리보기 실패:', (e as Error).message);
+				return { needed: true, text: null };
+			}
+		},
 	};
 }
 
