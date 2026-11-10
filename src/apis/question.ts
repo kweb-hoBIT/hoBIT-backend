@@ -49,6 +49,7 @@ const MAX_PINNED_FAQS = 3;
 type ClassifyOutcome =
 	| { kind: 'early'; body: QuestionResponse }
 	| { kind: 'rag'; correctedQuestion: string; keywords: string[]; requiredProfile: string[]; pinnedFaqs: string[]; routeSources: string[];
+	    placeSearch?: string | null; // LLM 분류가 정한 주변 장소 검색어 (RAG가 규칙으로 못 알아본 장소 질문에만 씀)
 	    classifiedBy: string; topic: string | null };
 
 /** 1·2단계: 의도 분류 → 인사·스몰톡·막는 프로필 질문이면 바로 응답, 아니면 RAG로 보낼 정보 반환 */
@@ -62,6 +63,7 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 	let requiredProfile: string[] = [];
 	let classifiedBy = 'llm';      // rule | llm — 질문 종류를 규칙으로 정했는지 (질문 기록)
 	let topic: string | null = null;
+	let placeSearch: string | null = null; // 주변 장소 검색어 (LLM 분류)
 
 	try {
 		const classifyRes = await postRag(
@@ -78,6 +80,7 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 		requiredProfile = classifyRes.data.required_profile ?? [];
 		classifiedBy = classifyRes.data.classified_by ?? 'llm';
 		topic = classifyRes.data.topic ?? null;
+		placeSearch = typeof classifyRes.data.place_search === 'string' ? classifyRes.data.place_search.slice(0, 30) : null;
 		const hardFilters: Record<string, unknown> = classifyRes.data.hard_filters ?? {};
 
 		const profileStatusLine = Object.keys(currentProfile).length > 0
@@ -166,7 +169,7 @@ async function classifyStep(question: string, language: QuestionRequest['languag
 	if (rules.length) console.log(`[keyword_rules] ${rules.map((r) => r.keyword).join(', ')} → 고정 FAQ ${pinnedFaqs.length}개, 찾아볼 곳 ${routeSources.length}개`);
 
 	return { kind: 'rag', correctedQuestion, keywords: [...keywords, ...ruleKeywords], requiredProfile, pinnedFaqs, routeSources,
-		classifiedBy, topic };
+		classifiedBy, topic, placeSearch };
 }
 
 /** RAG 응답(/chat 또는 /chat/stream의 done) → 화면용 응답 (카드 분할·출처 정리·공식 답변 칩) */
@@ -773,7 +776,7 @@ export const question = async (
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req) },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null },
 			{ headers: ragHeaders(sessionId) }
 		);
 		const logId = testRun ? -1 : await logQuestion(question, language, ragRes.data, startedAt, outcome);
@@ -827,7 +830,7 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req) },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null },
 			{ headers: ragHeaders(sessionId), responseType: 'stream', signal: abort.signal }
 		);
 
