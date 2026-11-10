@@ -14,6 +14,7 @@ import {
 import { OfficialFaq, Program, RecItem, RelatedNotice } from '../types/question';
 import { envs } from '../envs';
 import { Gate, screenQuestion } from '../middleware/abuse';
+import { ragBotOptions, refreshBotSettings } from '../services/bot_settings';
 
 // 서버 안에서 돌리는 시나리오 테스트(beta.sh test) — 질문 기록·인기 질문 집계에 넣지 않음.
 // 서버 안 주소에서 온 요청만 인정 (배포에서는 Caddy 뒤라 학생 요청의 IP는 실제 학생 IP)
@@ -759,7 +760,8 @@ export const question = async (
 	const sessionId = req.headers['x-session-id'] as string | undefined;
 	const startedAt = Date.now();
 	const testRun = isTestRun(req);
-	const gate = screenQuestion({ text: question, ip: req.ip, sessionId });
+	const bot = await refreshBotSettings(); // 관리자 사이트 > 챗봇 설정 (15초 캐시)
+	const gate = screenQuestion({ text: question, ip: req.ip, sessionId, settings: bot });
 	if (gate) {
 		res.status(200).json(gateResponse(question, language, gate)); // 화면이 일반 응답처럼 안내를 보여주게 200
 		return;
@@ -776,7 +778,8 @@ export const question = async (
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null,
+			  ...ragBotOptions(bot) },
 			{ headers: ragHeaders(sessionId) }
 		);
 		const logId = testRun ? -1 : await logQuestion(question, language, ragRes.data, startedAt, outcome);
@@ -805,7 +808,8 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 	const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 	const startedAt = Date.now();
 	const testRun = isTestRun(req);
-	const gate = screenQuestion({ text: question, ip: req.ip, sessionId });
+	const bot = await refreshBotSettings(); // 관리자 사이트 > 챗봇 설정 (15초 캐시)
+	const gate = screenQuestion({ text: question, ip: req.ip, sessionId, settings: bot });
 	if (gate) {
 		// 스트림 화면은 done 응답만 보면 되므로 같은 형식으로 안내 (HTTP 상태는 이미 200으로 보냄)
 		send('done', gateResponse(question, language, gate));
@@ -836,7 +840,8 @@ export const questionStream = async (req: Request<{}, {}, QuestionRequest>, res:
 			{ message: outcome.correctedQuestion, language: language.toLowerCase(), keywords: outcome.keywords,
 			  intent: 'academic', required_profile: outcome.requiredProfile,
 			  standalone: Boolean(req.body?.standalone), pinned_faqs: outcome.pinnedFaqs,
-			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null },
+			  route_sources: outcome.routeSources, probe: testRun, program: programOf(req), place_search: outcome.placeSearch ?? null,
+			  ...ragBotOptions(bot) },
 			{ headers: ragHeaders(sessionId), responseType: 'stream', signal: abort.signal }
 		);
 

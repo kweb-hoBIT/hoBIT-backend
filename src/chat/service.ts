@@ -7,6 +7,7 @@ import type { FileStorage } from './storage';
 import type { AgentClaims, AgentRole, Tokens } from './tokens';
 import { DEFAULT_HOURS, HoursSettings, parseHoursSettings, staffHours } from './hours';
 import type { CheckedFile } from './attachments';
+import { BotSettings, parseBotSettings, setCurrentBotSettings } from '../services/bot_settings';
 
 /**
  * 채팅 업무 규칙 (DB) — 소켓·HTTP와 분리 (같은 규칙을 테스트에서 바로 확인)
@@ -202,6 +203,37 @@ export class ChatService {
 		]);
 		this.featuresCache = null;
 		return value;
+	}
+
+	// ── 챗봇 설정 (답변 자유도·주변 장소·학식·과다 사용 — services/bot_settings.ts) ─────
+	/** 저장된 값 그대로 (없으면 null) — 기본값 채우기·범위 맞추기는 parseBotSettings */
+	async loadBotSettingsRaw(): Promise<unknown> {
+		const [rows] = await this.pool.query<Row[]>(`SELECT value FROM chat_settings WHERE name = 'bot'`);
+		return json(rows[0]?.['value']);
+	}
+
+	/** 설정 화면용 — 지금 값 + 마지막으로 바꾼 사람·시각 */
+	async getBotSettings(): Promise<{ settings: BotSettings; updatedAt: string | null; updatedBy: string | null }> {
+		const [rows] = await this.pool.query<Row[]>(`SELECT value, updated_at FROM chat_settings WHERE name = 'bot'`);
+		const raw = json(rows[0]?.['value']) as Record<string, unknown> | null;
+		const at = rows[0]?.['updated_at'];
+		return {
+			settings: parseBotSettings(raw) ?? parseBotSettings({})!,
+			updatedAt: at ? new Date(at as string).toISOString() : null,
+			updatedBy: typeof raw?.['updatedBy'] === 'string' ? (raw['updatedBy'] as string) : null,
+		};
+	}
+
+	/** 바꾼 칸만 보내도 됨 (나머지는 지금 값). 범위를 벗어난 숫자는 끝값으로 맞춰 저장 */
+	async setBotSettings(raw: unknown, by: string) {
+		const cur = (await this.getBotSettings()).settings;
+		const value = parseBotSettings(raw, cur);
+		if (!value) return null;
+		await this.pool.query(`INSERT INTO chat_settings (name, value) VALUES ('bot', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)`, [
+			JSON.stringify({ ...value, updatedBy: by.slice(0, 45) }),
+		]);
+		setCurrentBotSettings(value); // 이 서버의 질문 검사·RAG 요청에 바로 반영
+		return this.getBotSettings();
 	}
 
 	// ── 학교 메일 인증 ───────────────────────────────────────

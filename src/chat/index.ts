@@ -10,6 +10,7 @@ import { attachSocket } from './socket';
 import { chatRouter } from './routes';
 import type { LlmCheck } from './moderation';
 import { createTranslator, Translator } from './translate';
+import { refreshBotSettings, registerBotSettingsLoader } from '../services/bot_settings';
 
 /**
  * 실시간 채팅 붙이기: const chat = await createChat(httpServer); app.use('/api/v0/chat', chat.router)
@@ -34,6 +35,9 @@ export async function createChat(
 	const translator = overrides.translator === null ? undefined : (overrides.translator ?? createTranslator());
 	const realtime = attachSocket(httpServer, service, llm, translator);
 	const router = chatRouter(service, realtime);
+	// 챗봇 설정은 채팅 DB에 저장 — 채팅 DB가 없으면 기본값으로 계속 답함
+	registerBotSettingsLoader(() => service.loadBotSettingsRaw());
+	refreshBotSettings().catch(() => undefined);
 
 	// 보관 기간 정리 — 시작할 때 한 번, 이후 하루마다
 	const retention = setInterval(() => service.runRetention().catch((e) => console.error('[chat] 보관 기간 정리 실패:', e)), 24 * 3600 * 1000);

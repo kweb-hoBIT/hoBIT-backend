@@ -11,8 +11,10 @@
  *
  * 기록은 서버 메모리 (question_limit.ts와 같음 — pm2 1개). 서버를 다시 켜면 경고·정지 기록이 사라짐: 지금은 괜찮은 수준.
  * 서버 안에서 보내는 질문(localhost — 시나리오 테스트)은 경고·정지를 쌓지 않음. 내용 차단·안내는 똑같이 적용.
+ * 위 숫자들은 기본값 — 관리자 사이트 > 챗봇 설정에서 바꿈 (services/bot_settings.ts, 함수마다 settings를 넘겨 테스트에서 고정)
  */
 import { checkRules } from '../chat/moderation';
+import { BotSettings, currentBotSettings, DEFAULT_BOT_SETTINGS } from '../services/bot_settings';
 import { questionLimited } from './question_limit';
 
 export type StrikeReason = 'offensive' | 'rate_limit' | 'attack' | 'oversized' | 'spam';
@@ -31,12 +33,12 @@ export type Moderation = {
 type Msg = { ko: string; en: string };
 export type Gate = { message: Msg; moderation: Moderation };
 
-export const MAX_QUESTION_CHARS = 2000;  // 넘으면 답하지 않음 (토큰 비용)
-export const STRIKE_QUESTION_CHARS = 4000; // 이만큼 길면 일부러 보낸 것으로 보고 경고까지
+export const MAX_QUESTION_CHARS = DEFAULT_BOT_SETTINGS.maxQuestionChars;  // 기본값 — 넘으면 답하지 않음 (토큰 비용)
+// 최대 길이의 2배를 넘으면 일부러 보낸 것으로 보고 경고까지 (기본 4,000자)
+const strikeChars = (s: BotSettings) => s.maxQuestionChars * 2;
 
 const DAY = 86_400_000;
 const MIN = 60_000;
-const WARN_LIMIT = 3; // 3번째에 정지 — 경고 문구의 'n/3'
 // 같은 IP를 여러 학생이 함께 쓰는 학교 와이파이 — IP 기준은 5번 더 여유를 두고, 정지도 최대 1시간까지만
 const IP_EXTRA = 5;
 const IP_MAX_SUSPEND = 60 * MIN;
@@ -67,10 +69,10 @@ const DAILY_BUDGET_MESSAGE: Msg = {
 	ko: '오늘은 질문을 아주 많이 하셔서 여기까지 답할게요. 내일 다시 물어봐 주세요. 급한 내용은 학부 행정팀(02-3290-4132~4133)에 문의해 주세요.',
 	en: 'You’ve asked a lot of questions today, so I’ll stop here. Please ask again tomorrow, or contact the undergraduate office (02-3290-4132~4133) if it’s urgent.',
 };
-const TOO_LONG_MESSAGE: Msg = {
-	ko: `질문이 너무 길어요 (최대 ${MAX_QUESTION_CHARS.toLocaleString()}자). 궁금한 점만 짧게 다시 물어봐 주세요.`,
-	en: `Your question is too long (max ${MAX_QUESTION_CHARS.toLocaleString()} characters). Please ask again briefly.`,
-};
+const tooLongMessage = (max: number): Msg => ({
+	ko: `질문이 너무 길어요 (최대 ${max.toLocaleString()}자). 궁금한 점만 짧게 다시 물어봐 주세요.`,
+	en: `Your question is too long (max ${max.toLocaleString()} characters). Please ask again briefly.`,
+});
 const PERSONAL_USE_WHAT: Record<PersonalUseKind, Msg> = {
 	code: { ko: '코드 작성은', en: 'writing code' },
 	essay: { ko: '자기소개서·레포트 같은 글을 대신 쓰는 건', en: 'writing essays, reports or cover letters' },
@@ -116,9 +118,9 @@ const suspendedMessage = (remainMs: number, justNow: boolean): Msg => {
 				en: `Your access is temporarily suspended. You can ask again in ${r.en}.`,
 			};
 };
-const warningSuffix = (n: number): Msg => ({
-	ko: `\n\n⚠️ 경고 ${n}/${WARN_LIMIT} — 같은 일이 ${WARN_LIMIT}번 되면 잠시 질문이 제한돼요.`,
-	en: `\n\n⚠️ Warning ${n}/${WARN_LIMIT} — after ${WARN_LIMIT} warnings, questions will be temporarily suspended.`,
+const warningSuffix = (n: number, limit: number): Msg => ({
+	ko: `\n\n⚠️ 경고 ${n}/${limit} — 같은 일이 ${limit}번 되면 잠시 질문이 제한돼요.`,
+	en: `\n\n⚠️ Warning ${n}/${limit} — after ${limit} warnings, questions will be temporarily suspended.`,
 });
 const join = (a: Msg, b: Msg): Msg => ({ ko: a.ko + b.ko, en: a.en + b.en });
 
@@ -234,9 +236,10 @@ export function isFarPlaceQuestion(text: string): boolean {
 	return OTHER_AREA_RE.test(t) && !CAMPUS_AREA_RE.test(t);
 }
 
-export function detectPersonalUse(text: string): PersonalUseKind | null {
+export function detectPersonalUse(text: string, settings: BotSettings = DEFAULT_BOT_SETTINGS): PersonalUseKind | null {
 	const t = String(text ?? '').normalize('NFC');
-	if (isFarPlaceQuestion(t)) return 'far_place';
+	if (settings.blockFarPlace && isFarPlaceQuestion(t)) return 'far_place';
+	if (!settings.blockPersonalUse) return null;
 	for (const p of PERSONAL_USE_PATTERNS) {
 		if (p.re.test(t) && !(p.unless && p.unless.test(t))) return p.kind;
 	}
@@ -278,11 +281,13 @@ function rec(key: string, now: number): Rec {
 	return r;
 }
 
-/** n번째 경고에 따른 정지 시간 */
-export function suspendMs(n: number): number {
-	if (n >= 5) return DAY;
-	if (n === 4) return 60 * MIN;
-	if (n === WARN_LIMIT) return 10 * MIN;
+/** n번째 경고에 따른 정지 시간 — 기본: 3번째 10분, 4번째 1시간, 5번째부터 24시간 */
+export function suspendMs(n: number, settings: BotSettings = DEFAULT_BOT_SETTINGS): number {
+	const w = settings.warnLimit;
+	const [a, b, c] = settings.suspendMinutes;
+	if (n >= w + 2) return c * MIN;
+	if (n === w + 1) return b * MIN;
+	if (n === w) return a * MIN;
 	return 0;
 }
 
@@ -297,17 +302,23 @@ function addHit(r: Rec, reason: StrikeReason, now: number): boolean {
 }
 
 /** 경고 1회 기록 → 지금 상태 (strikes = 세션 기준 횟수, until = 정지 끝 시각 또는 0) */
-export function addStrike(ip: string | undefined, sessionId: string | undefined, reason: StrikeReason, now = Date.now()) {
+export function addStrike(
+	ip: string | undefined,
+	sessionId: string | undefined,
+	reason: StrikeReason,
+	now = Date.now(),
+	settings: BotSettings = DEFAULT_BOT_SETTINGS
+) {
 	const keys = subjects(ip, sessionId);
 	const p = rec(keys.primary, now);
 	const added = addHit(p, reason, now);
 	if (added) {
-		const ms = suspendMs(p.hits.length);
+		const ms = suspendMs(p.hits.length, settings);
 		if (ms) p.until = Math.max(p.until, now + ms);
 	}
 	const i = rec(keys.ip, now);
 	if (addHit(i, reason, now)) {
-		const ms = Math.min(suspendMs(i.hits.length - IP_EXTRA), IP_MAX_SUSPEND);
+		const ms = Math.min(suspendMs(i.hits.length - IP_EXTRA, settings), IP_MAX_SUSPEND);
 		if (ms > 0) i.until = Math.max(i.until, now + ms);
 	}
 	const until = Math.max(p.until, i.until);
@@ -342,11 +353,9 @@ const suspendedInfo = (reason: BlockReason, strikes: number, until: number, now:
  * 순서: 정지 중 → 횟수 초과 → 길이 → 욕설 → 공격 입력 → 개인 AI 요청
  */
 // ── 불필요한 질문·과다 사용 ─────────────────────────────────
+// 기준 숫자는 설정(BotSettings) — 기본: 같은 질문 3번째부터 안내만(LLM 안 부름)·6번째부터 경고, 뜻 없는 입력 5번째 경고
 const REPEAT_WINDOW = 10 * MIN;
-const REPEAT_NOTICE_AT = 3;  // 같은 질문 3번째부터 안내만 (LLM 안 부름)
-const REPEAT_STRIKE_AT = 6;  // 6번째부터 경고
-const MEANINGLESS_STRIKE_AT = 5;
-export const DAILY_CHAR_BUDGET = 20_000; // 하루 질문 글자 수 합 (보통 학생은 하루 몇백~몇천 자)
+export const DAILY_CHAR_BUDGET = DEFAULT_BOT_SETTINGS.dailyCharBudget; // 기본값 — 하루 질문 글자 수 합 (보통 학생은 하루 몇백~몇천 자)
 
 type Usage = { recent: { key: string; at: number }[]; junk: number[]; day: string; chars: number };
 const usage = new Map<string, Usage>();
@@ -388,8 +397,10 @@ export function screenQuestion(input: {
 	sessionId?: string | undefined;
 	now?: number;
 	limited?: (ip: string | undefined, sessionId: string | undefined) => boolean;
+	settings?: BotSettings; // 없으면 지금 쓰는 설정 (관리자 사이트 > 챗봇 설정)
 }): Gate | null {
 	const { ip, sessionId } = input;
+	const cfg = input.settings ?? currentBotSettings();
 	const now = input.now ?? Date.now();
 	const text = String(input.text ?? '');
 	const local = isLocal(ip);
@@ -404,19 +415,20 @@ export function screenQuestion(input: {
 	// 경고를 주고 안내 — 이번 경고로 정지되면 정지 안내까지
 	const strike = (reason: StrikeReason, base: Msg): Gate => {
 		if (local) return { message: base, moderation: { level: 'blocked', reason, strikes: 0 } };
-		const s = addStrike(ip, sessionId, reason, now);
+		const s = addStrike(ip, sessionId, reason, now, cfg);
 		if (s.until) {
 			return { message: join(join(base, { ko: '\n\n', en: '\n\n' }), suspendedMessage(s.until - now, true)), moderation: suspendedInfo(reason, s.strikes, s.until, now) };
 		}
 		if (!s.added) return { message: base, moderation: { level: 'blocked', reason, strikes: s.strikes } };
-		return { message: join(base, warningSuffix(s.strikes)), moderation: { level: 'warning', reason, strikes: s.strikes } };
+		return { message: join(base, warningSuffix(s.strikes, cfg.warnLimit)), moderation: { level: 'warning', reason, strikes: s.strikes } };
 	};
 
-	if ((input.limited ?? questionLimited)(ip, sessionId)) return strike('rate_limit', LIMIT_MESSAGE);
+	const limited = input.limited ?? ((i: string | undefined, s: string | undefined) => questionLimited(i, s, Date.now(), cfg));
+	if (limited(ip, sessionId)) return strike('rate_limit', LIMIT_MESSAGE);
 
-	if (text.length > MAX_QUESTION_CHARS) {
-		if (text.length > STRIKE_QUESTION_CHARS) return strike('oversized', TOO_LONG_MESSAGE);
-		return { message: TOO_LONG_MESSAGE, moderation: { level: 'blocked', reason: 'too_long', strikes: local ? 0 : strikeCount(ip, sessionId, now) } };
+	if (text.length > cfg.maxQuestionChars) {
+		if (text.length > strikeChars(cfg)) return strike('oversized', tooLongMessage(cfg.maxQuestionChars));
+		return { message: tooLongMessage(cfg.maxQuestionChars), moderation: { level: 'blocked', reason: 'too_long', strikes: local ? 0 : strikeCount(ip, sessionId, now) } };
 	}
 
 	if (isOffensive(text)) return strike('offensive', PROFANITY_MESSAGE);
@@ -425,25 +437,25 @@ export function screenQuestion(input: {
 	// 불필요한 질문·과다 사용 (서버 안 질문은 제외 — 시나리오 테스트가 같은 질문을 되풀이할 수 있음)
 	if (!local) {
 		const u = usageOf(subjects(ip, sessionId).primary, now);
-		if (u.chars + text.length > DAILY_CHAR_BUDGET) {
+		if (u.chars + text.length > cfg.dailyCharBudget) {
 			return { message: DAILY_BUDGET_MESSAGE, moderation: { level: 'blocked', reason: 'daily_budget', strikes: strikeCount(ip, sessionId, now) } };
 		}
 		if (isMeaningless(text)) {
 			u.junk.push(now);
-			if (u.junk.length >= MEANINGLESS_STRIKE_AT) return strike('spam', MEANINGLESS_MESSAGE);
+			if (u.junk.length >= cfg.meaninglessStrikeAt) return strike('spam', MEANINGLESS_MESSAGE);
 			return { message: MEANINGLESS_MESSAGE, moderation: { level: 'blocked', reason: 'meaningless', strikes: strikeCount(ip, sessionId, now) } };
 		}
 		const key = normQ(text);
 		const same = u.recent.filter((r) => r.key === key).length + 1;
 		u.recent.push({ key, at: now });
-		if (same >= REPEAT_STRIKE_AT) return strike('spam', REPEAT_MESSAGE);
-		if (same >= REPEAT_NOTICE_AT) {
+		if (same >= cfg.repeatStrikeAt) return strike('spam', REPEAT_MESSAGE);
+		if (same >= cfg.repeatNoticeAt) {
 			return { message: REPEAT_MESSAGE, moderation: { level: 'blocked', reason: 'repeat', strikes: strikeCount(ip, sessionId, now) } };
 		}
 		u.chars += text.length; // 실제로 답하러 가는 질문만 셈
 	}
 
-	const kind = detectPersonalUse(text);
+	const kind = detectPersonalUse(text, cfg);
 	if (kind) {
 		return { message: personalUseMessage(kind), moderation: { level: 'blocked', reason: 'off_topic', strikes: local ? 0 : strikeCount(ip, sessionId, now) } };
 	}

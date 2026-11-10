@@ -192,7 +192,7 @@ describe('경고·정지 단계', () => {
 	beforeEach(() => resetAbuseRecords());
 
 	test('정지 시간 단계', () => {
-		expect([1, 2, 3, 4, 5, 9].map(suspendMs)).toEqual([0, 0, 10 * MIN, 60 * MIN, 1440 * MIN, 1440 * MIN]);
+		expect([1, 2, 3, 4, 5, 9].map((n) => suspendMs(n))).toEqual([0, 0, 10 * MIN, 60 * MIN, 1440 * MIN, 1440 * MIN]);
 	});
 
 	test('1~2번 경고, 3번째 10분, 4번째 1시간, 5번째 24시간', () => {

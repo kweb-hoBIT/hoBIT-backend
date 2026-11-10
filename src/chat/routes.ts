@@ -8,6 +8,7 @@ import type { ChatRealtime } from './socket';
 import { checkFile, MAX_FILE_BYTES } from './attachments';
 import type { AgentClaims } from './tokens';
 import { STUDENT_TOKEN_TTL_SEC } from './tokens';
+import { BOT_SETTING_LIMITS, DEFAULT_BOT_SETTINGS, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
 
 /**
  * 채팅 HTTP API (/api/v0/chat) — 메시지는 소켓, 그 밖(인증·채팅 시작·첨부·설정)은 여기
@@ -351,6 +352,18 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	route.put('/agent/features', express.json({ limit: '4kb' }), agent, staffOnly, async (req, res) => {
 		const features = await service.setFeatures(req.body?.features);
 		return features ? res.json({ ok: true, features }) : fail(res, 400, 'invalid');
+	});
+	// 챗봇 설정 (답변 자유도·주변 장소·학식·과다 사용) — 보기는 담당자 누구나, 바꾸기는 행정실·개발자만
+	const botPayload = (data: Awaited<ReturnType<ChatService['getBotSettings']>>) => ({
+		ok: true,
+		...data,
+		defaults: DEFAULT_BOT_SETTINGS,
+		limits: { ...BOT_SETTING_LIMITS, suspendMinutes: SUSPEND_MINUTES_LIMIT },
+	});
+	route.get('/agent/bot-settings', agent, async (_req, res) => res.json(botPayload(await service.getBotSettings())));
+	route.put('/agent/bot-settings', express.json({ limit: '8kb' }), agent, staffOnly, async (req, res) => {
+		const saved = await service.setBotSettings(req.body?.settings, agentOf(req).name);
+		return saved ? res.json(botPayload(saved)) : fail(res, 400, 'invalid');
 	});
 	route.put('/agent/settings', express.json({ limit: '16kb' }), agent, staffOnly, async (req, res) => {
 		const hours = await service.setHours(req.body?.hours);
