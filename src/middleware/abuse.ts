@@ -15,7 +15,7 @@ import { questionLimited } from './question_limit';
 
 export type StrikeReason = 'offensive' | 'rate_limit' | 'attack' | 'oversized';
 export type BlockReason = StrikeReason | 'too_long' | 'off_topic' | 'suspended';
-export type PersonalUseKind = 'code' | 'essay' | 'translate' | 'homework' | 'roleplay' | 'general';
+export type PersonalUseKind = 'code' | 'essay' | 'translate' | 'homework' | 'roleplay' | 'general' | 'far_place';
 
 /** 응답에 붙는 안내 정보 — 화면이 경고창·입력 잠금에 사용 (없으면 평소 응답) */
 export type Moderation = {
@@ -64,8 +64,14 @@ const PERSONAL_USE_WHAT: Record<PersonalUseKind, Msg> = {
 	homework: { ko: '과제·시험 문제 풀이는', en: 'solving homework or exam problems' },
 	roleplay: { ko: '역할극은', en: 'role-play' },
 	general: { ko: '학교생활과 관계없는 질문은', en: 'questions unrelated to campus life' },
+	far_place: { ko: '', en: '' }, // 아래 FAR_PLACE_MESSAGE를 씀
 };
-export const personalUseMessage = (kind: PersonalUseKind): Msg => ({
+// 학교 밖 다른 지역·내 위치 주변 장소 — 주변 장소 검색(카카오맵)은 안암캠퍼스 주변만 (고려대 챗봇이라)
+const FAR_PLACE_MESSAGE: Msg = {
+	ko: '호빗은 고려대학교 안암캠퍼스 주변 장소만 안내해요.\n정경대 후문·참살이길처럼 학교 근처 맛집·카페·약국 등을 물어봐 주세요!',
+	en: 'hoBIT only shows places around Korea University’s Anam campus.\nTry asking about restaurants, cafes or pharmacies near campus!',
+};
+export const personalUseMessage = (kind: PersonalUseKind): Msg => kind === 'far_place' ? FAR_PLACE_MESSAGE : ({
 	ko:
 		`호빗은 고려대 정보대학 학사·학교생활 안내 도우미라 ${PERSONAL_USE_WHAT[kind].ko} 도와드리기 어려워요.\n` +
 		'대신 수강신청, 졸업요건, 장학금, 휴학·복학, 증명서 발급, 학과 행사·공지 같은 걸 물어봐 주세요!',
@@ -197,8 +203,26 @@ const PERSONAL_USE_PATTERNS: { kind: PersonalUseKind; re: RegExp; unless?: RegEx
 ];
 
 /** 개인 AI처럼 쓰는 요청이면 종류, 아니면 null (애매하면 null — LLM이 판단) */
+// 장소 종류 — 이 말이 있고 다른 지역·내 위치를 물으면 far_place
+const PLACE_KIND_RE = /맛집|밥집|술집|카페|커피|식당|음식점|국밥|치킨|피자|빵집|베이커리|편의점|약국|병원|은행|헬스장|미용실|노래방|pc\s*방|숙소|호텔|모텔|restaurants?|cafes?|coffee|pharmacy|hotel|bars?\b|places?\s*to\s*eat/i;
+// 학교 주변으로 보는 말 (이 말이 있으면 다른 지역 이름이 같이 있어도 막지 않음 — 예: "안암역 근처 카페")
+const CAMPUS_AREA_RE = /안암|고려대|고대|정경대|정대\s*후문|참살이|개운사|제기동|보문|학교|캠퍼스|정문|후문|이공계|애기능|하나스퀘어|우정정보관|정보대|교우회관|korea\s*univ|campus/i;
+// 사용자 위치 주변 ("내 위치", "우리 집 근처", "near me")
+const MY_LOCATION_RE = /(내|제|나의|저의|현재|지금)\s*(위치|주변|근처|동네)|우리\s*(집|동네)|집\s*(근처|앞|주변)|여기\s*(서)?\s*(근처|주변|가까운)|near\s*me|my\s*(location|area|place|home)|around\s*me/i;
+// 다른 지역 — 자주 나오는 곳 + "○○역/○○동/○○구" 형태
+const OTHER_AREA_RE = /강남|홍대|신촌|이태원|명동|잠실|건대|성수|종로|여의도|압구정|합정|연남|을지로|혜화|대학로|성신여대|노원|부산|대구|광주|대전|인천|제주|수원|경주|전주|해운대|일본|도쿄|오사카|[가-힣]{1,5}(역|구)\s*(근처|주변|앞|에|에서|쪽|맛집|카페)|\b(gangnam|hongdae|sinchon|itaewon|myeongdong|busan|jeju|tokyo|osaka)\b/i;
+
+/** 학교 주변이 아닌 장소를 묻는 질문 (다른 지역·내 위치) — 규칙 */
+export function isFarPlaceQuestion(text: string): boolean {
+	const t = String(text ?? '');
+	if (!PLACE_KIND_RE.test(t)) return false;
+	if (MY_LOCATION_RE.test(t)) return true;
+	return OTHER_AREA_RE.test(t) && !CAMPUS_AREA_RE.test(t);
+}
+
 export function detectPersonalUse(text: string): PersonalUseKind | null {
 	const t = String(text ?? '').normalize('NFC');
+	if (isFarPlaceQuestion(t)) return 'far_place';
 	for (const p of PERSONAL_USE_PATTERNS) {
 		if (p.re.test(t) && !(p.unless && p.unless.test(t))) return p.kind;
 	}
