@@ -29,6 +29,7 @@ export type QuestionResponse = {
   related_notices?: RelatedNotice[]; // 답변 아래 "관련 공지" — 질문 주제와 맞고 아직 신청할 수 있는 공지
   audience?: Program;                // 이 답변의 기준 (학부·대학원) — 스위치와 다르면 화면에 표시
   audience_by?: 'question' | 'setting' | 'default';
+  not_found?: boolean;               // 자료에서 답을 못 찾은 답변 (화면: 우는 호빗)
   moderation?: Moderation;           // 경고·정지·차단 안내일 때만 (화면: 경고창·입력 잠금)
   id: number;
 };

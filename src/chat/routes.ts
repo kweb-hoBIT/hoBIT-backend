@@ -8,7 +8,7 @@ import type { ChatRealtime } from './socket';
 import { checkFile, MAX_FILE_BYTES } from './attachments';
 import type { AgentClaims } from './tokens';
 import { STUDENT_TOKEN_TTL_SEC } from './tokens';
-import { BOT_SETTING_LIMITS, currentBotSettings, DEFAULT_BOT_SETTINGS, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
+import { BOT_SETTING_LIMITS, DEFAULT_BOT_SETTINGS, refreshBotSettings, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
 import { BOARDS_HOURS_OPTIONS, checkCrawlUrl, crawlTickAt, DEFAULT_CRAWL_SCHEDULE, DEFAULT_CRAWL_SOURCES, markCrawlTick, MAX_CRAWL_PAGES, QUICK_MIN_OPTIONS } from '../services/crawl_pages';
 import axios from 'axios';
 import { envs } from '../envs';
@@ -114,7 +114,11 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 		const f = await service.getFeatures();
 		res.set('Cache-Control', 'no-store');
 		// gradEnabled: 챗봇 설정에서 대학원 답변을 끄면 학생 화면이 학부/대학원 스위치를 숨김
-		res.json({ ok: true, staff: f.staff, senior: f.senior, emailVerification: f.emailVerification, gradEnabled: currentBotSettings().gradEnabled });
+		const bot = await refreshBotSettings(); // 서버를 켠 뒤 질문이 아직 없어도 저장된 설정으로 (15초 캐시)
+		res.json({
+			ok: true, staff: f.staff, senior: f.senior, emailVerification: f.emailVerification, gradEnabled: bot.gradEnabled,
+			mascot: { enabled: bot.mascotEnabled, idleSec: bot.mascotIdleSec }, // 호빗 캐릭터 (움직이기·졸기까지 시간)
+		});
 	});
 
 	// ── 학교 메일 인증 ──────────────────────────────────────

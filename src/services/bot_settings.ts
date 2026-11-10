@@ -18,6 +18,9 @@ export type BotSettings = {
 	menuEnabled: boolean;
 	// 대학원 — 끄면 학부 기준으로만 답함 (학생 화면의 학부/대학원 스위치도 숨김)
 	gradEnabled: boolean;
+	// 호빗 캐릭터 (학생 화면 시작 화면) — 움직이기 켜기·끄기, 가만히 두면 졸기까지 시간
+	mascotEnabled: boolean;
+	mascotIdleSec: number;
 	// 과다 사용
 	sessionPerMin: number;
 	sessionPerDay: number;
@@ -45,6 +48,8 @@ export const DEFAULT_BOT_SETTINGS: BotSettings = {
 	blockFarPlace: true,
 	menuEnabled: true,
 	gradEnabled: true,
+	mascotEnabled: true,
+	mascotIdleSec: 30,
 	sessionPerMin: 20,
 	sessionPerDay: 300,
 	ipPerMin: 120,
@@ -63,6 +68,7 @@ export const DEFAULT_BOT_SETTINGS: BotSettings = {
 export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step: number }> = {
 	temperature: { min: 0, max: 1, step: 0.1 },
 	maxTokens: { min: 300, max: 3000, step: 100 },
+	mascotIdleSec: { min: 10, max: 600, step: 5 },
 	placeRadiusM: { min: 300, max: 3000, step: 100 },
 	placeSize: { min: 3, max: 15, step: 1 }, // 카카오 검색 한 번에 최대 15개
 	sessionPerMin: { min: 3, max: 100, step: 1 },
@@ -79,7 +85,7 @@ export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step
 export const SUSPEND_MINUTES_LIMIT = { min: 1, max: 10_080, step: 1 }; // 최대 7일
 
 const NUM_KEYS = Object.keys(BOT_SETTING_LIMITS) as NumKey[];
-const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'gradEnabled', 'blockPersonalUse'];
+const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'gradEnabled', 'mascotEnabled', 'blockPersonalUse'];
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const roundStep = (v: number, step: number) => (step < 1 ? Math.round(v * 100) / 100 : Math.round(v));

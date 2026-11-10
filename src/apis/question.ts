@@ -614,6 +614,7 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 			recommendations: ragData.recommendations ?? [], related_notices: ragData.related_notices ?? [] }),
 		audience: ragData.audience === 'graduate' ? 'graduate' : 'undergraduate',
 		audience_by: ragData.audience_by ?? 'default',
+		not_found: isNoSourceFallback || undefined, // 자료에서 답을 못 찾음 → 화면에서 우는 호빗
 		id: -1,
 	} as QuestionResponse;
 }
