@@ -4,6 +4,8 @@
  *  1) 경고·일시 정지 (strike): 욕설·비하 / 질문 횟수 초과 / 공격 입력(SQL·스크립트·경로·템플릿 주입, 프롬프트 탈취) / 4,000자 넘는 입력
  *     24시간 안에 1~2번 → 경고(n/3), 3번째 → 10분, 4번째 → 1시간, 5번째부터 → 24시간 질문 제한
  *     정지 중에는 질문마다 남은 시간만 안내 (classify·RAG를 부르지 않음 → 비용 없음)
+ *  1-1) 불필요한 질문·과다 사용 (LLM 비용) — 같은 질문 반복(10분에 3번째부터 안내, 6번째 경고), 뜻 없는 입력(ㅋㅋㅋ·asdf·같은 글자 반복)은
+ *       안내만(10분에 5번째부터 경고), 하루 질문 글자 수 합계 20,000자 넘으면 그날은 그만 (자정까지)
  *  2) 개인 AI처럼 쓰는 요청 (코드 작성·자소서/레포트 대필·번역·과제 풀이·역할극·학교와 무관한 잡담) → 안내 문구만, strike 없음
  *     분명한 요청만 잡고, 애매하면 그대로 보냄 (LLM이 판단) — "자기소개서 제출 기한", "과제 제출 사이트"는 보냄
  *
@@ -13,8 +15,8 @@
 import { checkRules } from '../chat/moderation';
 import { questionLimited } from './question_limit';
 
-export type StrikeReason = 'offensive' | 'rate_limit' | 'attack' | 'oversized';
-export type BlockReason = StrikeReason | 'too_long' | 'off_topic' | 'suspended';
+export type StrikeReason = 'offensive' | 'rate_limit' | 'attack' | 'oversized' | 'spam';
+export type BlockReason = StrikeReason | 'too_long' | 'off_topic' | 'suspended' | 'repeat' | 'meaningless' | 'daily_budget';
 export type PersonalUseKind = 'code' | 'essay' | 'translate' | 'homework' | 'roleplay' | 'general' | 'far_place';
 
 /** 응답에 붙는 안내 정보 — 화면이 경고창·입력 잠금에 사용 (없으면 평소 응답) */
@@ -52,6 +54,18 @@ const LIMIT_MESSAGE: Msg = {
 const ATTACK_MESSAGE: Msg = {
 	ko: '처리할 수 없는 입력이 들어 있어 답변하지 않았어요. 정보대학 학사·학교생활에 대해 질문해 주세요.',
 	en: 'I didn’t answer because the input contains content I can’t process. Please ask about academics or campus life at the College of Informatics.',
+};
+const REPEAT_MESSAGE: Msg = {
+	ko: '방금 같은 질문을 여러 번 하셨어요. 위의 답변을 확인해 주시고, 더 궁금한 점은 조금 바꿔서 물어봐 주세요.',
+	en: 'You’ve asked the same question several times. Please check the answer above, or rephrase if you need something else.',
+};
+const MEANINGLESS_MESSAGE: Msg = {
+	ko: '어떤 점이 궁금한지 조금 더 구체적으로 물어봐 주세요. 예: "졸업요건 알려줘", "이번 학기 수강신청 언제야?"',
+	en: 'Could you tell me a bit more about what you’d like to know? e.g. "graduation requirements", "when is course registration?"',
+};
+const DAILY_BUDGET_MESSAGE: Msg = {
+	ko: '오늘은 질문을 아주 많이 하셔서 여기까지 답할게요. 내일 다시 물어봐 주세요. 급한 내용은 학부 행정팀(02-3290-4132~4133)에 문의해 주세요.',
+	en: 'You’ve asked a lot of questions today, so I’ll stop here. Please ask again tomorrow, or contact the undergraduate office (02-3290-4132~4133) if it’s urgent.',
 };
 const TOO_LONG_MESSAGE: Msg = {
 	ko: `질문이 너무 길어요 (최대 ${MAX_QUESTION_CHARS.toLocaleString()}자). 궁금한 점만 짧게 다시 물어봐 주세요.`,
@@ -327,6 +341,47 @@ const suspendedInfo = (reason: BlockReason, strikes: number, until: number, now:
  * 질문 검사 — 막아야 하면 안내 문구와 moderation 정보, 통과면 null.
  * 순서: 정지 중 → 횟수 초과 → 길이 → 욕설 → 공격 입력 → 개인 AI 요청
  */
+// ── 불필요한 질문·과다 사용 ─────────────────────────────────
+const REPEAT_WINDOW = 10 * MIN;
+const REPEAT_NOTICE_AT = 3;  // 같은 질문 3번째부터 안내만 (LLM 안 부름)
+const REPEAT_STRIKE_AT = 6;  // 6번째부터 경고
+const MEANINGLESS_STRIKE_AT = 5;
+export const DAILY_CHAR_BUDGET = 20_000; // 하루 질문 글자 수 합 (보통 학생은 하루 몇백~몇천 자)
+
+type Usage = { recent: { key: string; at: number }[]; junk: number[]; day: string; chars: number };
+const usage = new Map<string, Usage>();
+const kstDay = (now: number) => new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
+const normQ = (t: string) => t.toLowerCase().replace(/[\s?!.~,'"ㅎㅋㅠㅜ^]+/g, '');
+
+/** 뜻 없는 입력 — 한글 음절·영단어가 없음(ㅋㅋ·ㅁㄴㅇㄹ·!!!·1111), 같은 글자 반복(아아아아아아), 자판 두드리기(asdf, qwer) */
+export function isMeaningless(text: string): boolean {
+	const t = String(text ?? '').trim();
+	if (!t) return true;
+	const hangul = (t.match(/[가-힣]/g) ?? []).length;
+	const words = t.match(/[a-z]{2,}/gi) ?? [];
+	if (!hangul && !words.length) return true; // 자음·모음, 기호, 숫자만
+	if (/([가-힣a-z])\1{5,}/i.test(t.replace(/\s/g, '')) && hangul + words.join('').length <= 8) return true; // 아아아아아아
+	if (!hangul && words.every((w) => /^(asdf|qwer|zxcv|sdf|wer|xcv|jkl|hjk|uiop|fgh)+[a-z]*$/i.test(w) || (!/[aeiouy]/i.test(w) && w.length >= 5)))
+		return true;
+	return false;
+}
+
+function usageOf(key: string, now: number): Usage {
+	let u = usage.get(key);
+	if (!u) {
+		if (usage.size > MAX_RECORDS) usage.delete(usage.keys().next().value as string);
+		u = { recent: [], junk: [], day: kstDay(now), chars: 0 };
+		usage.set(key, u);
+	}
+	if (u.day !== kstDay(now)) {
+		u.day = kstDay(now);
+		u.chars = 0;
+	}
+	u.recent = u.recent.filter((r) => now - r.at < REPEAT_WINDOW);
+	u.junk = u.junk.filter((at) => now - at < REPEAT_WINDOW);
+	return u;
+}
+
 export function screenQuestion(input: {
 	text: unknown;
 	ip?: string | undefined;
@@ -366,6 +421,27 @@ export function screenQuestion(input: {
 
 	if (isOffensive(text)) return strike('offensive', PROFANITY_MESSAGE);
 	if (detectAttack(text)) return strike('attack', ATTACK_MESSAGE);
+
+	// 불필요한 질문·과다 사용 (서버 안 질문은 제외 — 시나리오 테스트가 같은 질문을 되풀이할 수 있음)
+	if (!local) {
+		const u = usageOf(subjects(ip, sessionId).primary, now);
+		if (u.chars + text.length > DAILY_CHAR_BUDGET) {
+			return { message: DAILY_BUDGET_MESSAGE, moderation: { level: 'blocked', reason: 'daily_budget', strikes: strikeCount(ip, sessionId, now) } };
+		}
+		if (isMeaningless(text)) {
+			u.junk.push(now);
+			if (u.junk.length >= MEANINGLESS_STRIKE_AT) return strike('spam', MEANINGLESS_MESSAGE);
+			return { message: MEANINGLESS_MESSAGE, moderation: { level: 'blocked', reason: 'meaningless', strikes: strikeCount(ip, sessionId, now) } };
+		}
+		const key = normQ(text);
+		const same = u.recent.filter((r) => r.key === key).length + 1;
+		u.recent.push({ key, at: now });
+		if (same >= REPEAT_STRIKE_AT) return strike('spam', REPEAT_MESSAGE);
+		if (same >= REPEAT_NOTICE_AT) {
+			return { message: REPEAT_MESSAGE, moderation: { level: 'blocked', reason: 'repeat', strikes: strikeCount(ip, sessionId, now) } };
+		}
+		u.chars += text.length; // 실제로 답하러 가는 질문만 셈
+	}
 
 	const kind = detectPersonalUse(text);
 	if (kind) {
