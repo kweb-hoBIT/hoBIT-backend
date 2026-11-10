@@ -25,6 +25,8 @@ module.exports = {
       args: 'src.main:app --host 127.0.0.1 --port 8100 --workers 1 --timeout-keep-alive 65',
       interpreter: 'none',
       max_memory_restart: '900M',
+      // 다시 켤 때 처리 중인 답변(길면 20초)을 끝낼 때까지 기다림 — 기본 1.6초면 강제 종료돼 학생 질문이 끊겼음
+      kill_timeout: 30000,
     },
   ],
 };
