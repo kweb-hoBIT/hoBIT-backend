@@ -9,7 +9,7 @@ import { checkFile, MAX_FILE_BYTES } from './attachments';
 import type { AgentClaims } from './tokens';
 import { STUDENT_TOKEN_TTL_SEC } from './tokens';
 import { BOT_SETTING_LIMITS, currentBotSettings, DEFAULT_BOT_SETTINGS, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
-import { checkCrawlUrl, CRAWL_SCHEDULE, MAX_CRAWL_PAGES } from '../services/crawl_pages';
+import { BOARDS_HOURS_OPTIONS, checkCrawlUrl, crawlTickAt, DEFAULT_CRAWL_SCHEDULE, DEFAULT_CRAWL_SOURCES, markCrawlTick, MAX_CRAWL_PAGES, QUICK_MIN_OPTIONS } from '../services/crawl_pages';
 import axios from 'axios';
 import { envs } from '../envs';
 
@@ -382,11 +382,19 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 			.get(`${RAG}/crawl/status`, { timeout: 4000 })
 			.then((r) => r.data)
 			.catch(() => null); // RAG가 꺼져 있어도 목록은 보이게
-		return { ok: true, ...(await service.getCrawlPages()), schedule: CRAWL_SCHEDULE, maxPages: MAX_CRAWL_PAGES, status };
+		return {
+			ok: true,
+			...(await service.getCrawlConfig()),
+			defaults: { schedule: DEFAULT_CRAWL_SCHEDULE, sources: DEFAULT_CRAWL_SOURCES },
+			options: { quickMin: QUICK_MIN_OPTIONS, boardsHours: BOARDS_HOURS_OPTIONS },
+			maxPages: MAX_CRAWL_PAGES,
+			tickAt: crawlTickAt(),
+			status,
+		};
 	};
 	route.get('/agent/crawl', agent, async (_req, res) => res.json(await crawlPayload()));
 	route.put('/agent/crawl', express.json({ limit: '32kb' }), agent, staffOnly, async (req, res) => {
-		const saved = await service.setCrawlPages(req.body?.pages, agentOf(req).name);
+		const saved = await service.setCrawlConfig(req.body, agentOf(req).name);
 		if (!('pages' in saved)) return res.status(400).json({ ok: false, error: saved.error, url: (saved as { url?: string }).url });
 		return res.json(await crawlPayload());
 	});
@@ -405,8 +413,15 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	// RAG 정기 수집이 서버 안에서만 부름 — 켜 둔 페이지 목록 (Caddy를 거친 요청은 IP가 학생 IP라 여기에 안 걸림)
 	route.get('/internal/crawl-pages', async (req, res) => {
 		if (!LOOPBACK.has(req.ip ?? '') || req.headers['x-forwarded-for']) return fail(res, 403, 'forbidden');
-		const { pages } = await service.getCrawlPages();
-		return res.json({ ok: true, pages: pages.filter((p) => p.enabled) });
+		const { pages, sources } = await service.getCrawlConfig();
+		return res.json({ ok: true, pages: sources.customPages ? pages.filter((p) => p.enabled) : [] });
+	});
+	// 서버 crontab(5분마다 beta.sh crawl-tick)과 수집 파이프라인이 부름 — 일정·켜 둔 대상 (?tick=1이면 받아 간 시각 기록)
+	route.get('/internal/crawl-config', async (req, res) => {
+		if (!LOOPBACK.has(req.ip ?? '') || req.headers['x-forwarded-for']) return fail(res, 403, 'forbidden');
+		if (req.query['tick'] === '1') markCrawlTick();
+		const { pages, schedule, sources } = await service.getCrawlConfig();
+		return res.json({ ok: true, schedule, sources, pages: sources.customPages ? pages.filter((p) => p.enabled) : [] });
 	});
 	route.put('/agent/settings', express.json({ limit: '16kb' }), agent, staffOnly, async (req, res) => {
 		const hours = await service.setHours(req.body?.hours);

@@ -26,3 +26,19 @@ describe('정기 수집에 더할 페이지', () => {
 		expect(parseCrawlPages('x')).toEqual({ error: 'invalid' });
 	});
 });
+
+import { DEFAULT_CRAWL_SCHEDULE, parseCrawlConfig, parseCrawlSchedule, parseCrawlSources } from '../../src/services/crawl_pages';
+
+describe('정기 수집 일정·대상', () => {
+	test('고를 수 있는 값만, 시각은 5분 단위', () => {
+		expect(parseCrawlSchedule({ quickMin: 30, boardsHours: 6, allTime: '3:05', recDay: 3, recTime: '22:40' })).toEqual({
+			quickMin: 30, boardsHours: 6, allTime: '03:05', recDay: 3, recTime: '22:40',
+		});
+		expect(parseCrawlSchedule({ quickMin: 7, boardsHours: 5, allTime: '04:31', recDay: 9 })).toEqual(DEFAULT_CRAWL_SCHEDULE);
+		expect(parseCrawlSchedule({ allTime: '', recDay: -1, quickMin: 0 })).toMatchObject({ allTime: '', recDay: -1, quickMin: 0 });
+	});
+	test('대상은 보낸 칸만 바꿈, 저장값이 없으면 기본값', () => {
+		expect(parseCrawlSources({ boards: false, x: true })).toMatchObject({ boards: false, infoPages: true });
+		expect(parseCrawlConfig(null)).toMatchObject({ pages: [], schedule: DEFAULT_CRAWL_SCHEDULE });
+	});
+});

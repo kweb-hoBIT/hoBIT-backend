@@ -8,7 +8,7 @@ import type { AgentClaims, AgentRole, Tokens } from './tokens';
 import { DEFAULT_HOURS, HoursSettings, parseHoursSettings, staffHours } from './hours';
 import type { CheckedFile } from './attachments';
 import { BotSettings, parseBotSettings, setCurrentBotSettings } from '../services/bot_settings';
-import { CrawlPage, parseCrawlPages } from '../services/crawl_pages';
+import { CrawlConfig, parseCrawlConfig, parseCrawlPages, parseCrawlSchedule, parseCrawlSources } from '../services/crawl_pages';
 
 /**
  * 채팅 업무 규칙 (DB) — 소켓·HTTP와 분리 (같은 규칙을 테스트에서 바로 확인)
@@ -238,25 +238,33 @@ export class ChatService {
 	}
 
 	// ── 정기 수집에 더한 페이지 (services/crawl_pages.ts) ─────────────
-	async getCrawlPages(): Promise<{ pages: CrawlPage[]; updatedAt: string | null; updatedBy: string | null }> {
+	async getCrawlConfig(): Promise<CrawlConfig & { updatedAt: string | null; updatedBy: string | null }> {
 		const [rows] = await this.pool.query<Row[]>(`SELECT value, updated_at FROM chat_settings WHERE name = 'crawl'`);
 		const raw = json(rows[0]?.['value']) as Record<string, unknown> | null;
-		const parsed = parseCrawlPages(raw?.['pages'] ?? []);
 		const at = rows[0]?.['updated_at'];
 		return {
-			pages: 'pages' in parsed ? parsed.pages : [],
+			...parseCrawlConfig(raw),
 			updatedAt: at ? new Date(at as string).toISOString() : null,
 			updatedBy: typeof raw?.['updatedBy'] === 'string' ? (raw['updatedBy'] as string) : null,
 		};
 	}
 
-	async setCrawlPages(raw: unknown, by: string) {
-		const parsed = parseCrawlPages(raw);
-		if (!('pages' in parsed)) return parsed;
+	/** 보낸 칸만 바꿈 (pages·schedule·sources) — 페이지 주소가 잘못되면 저장하지 않고 이유를 돌려줌 */
+	async setCrawlConfig(raw: unknown, by: string) {
+		const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+		const cur = await this.getCrawlConfig();
+		let pages = cur.pages;
+		if (r['pages'] !== undefined) {
+			const parsed = parseCrawlPages(r['pages']);
+			if (!('pages' in parsed)) return parsed;
+			pages = parsed.pages;
+		}
+		const schedule = r['schedule'] !== undefined ? parseCrawlSchedule(r['schedule'], cur.schedule) : cur.schedule;
+		const sources = r['sources'] !== undefined ? parseCrawlSources(r['sources'], cur.sources) : cur.sources;
 		await this.pool.query(`INSERT INTO chat_settings (name, value) VALUES ('crawl', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)`, [
-			JSON.stringify({ pages: parsed.pages, updatedBy: by.slice(0, 45) }),
+			JSON.stringify({ pages, schedule, sources, updatedBy: by.slice(0, 45) }),
 		]);
-		return this.getCrawlPages();
+		return this.getCrawlConfig();
 	}
 
 	// ── 학교 메일 인증 ───────────────────────────────────────
