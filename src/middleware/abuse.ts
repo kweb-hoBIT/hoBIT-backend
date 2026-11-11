@@ -363,9 +363,13 @@ const kstDay = (now: number) => new Date(now + 9 * 3_600_000).toISOString().slic
 const normQ = (t: string) => t.toLowerCase().replace(/[\s?!.~,'"ㅎㅋㅠㅜ^]+/g, '');
 
 /** 뜻 없는 입력 — 한글 음절·영단어가 없음(ㅋㅋ·ㅁㄴㅇㄹ·!!!·1111), 같은 글자 반복(아아아아아아), 자판 두드리기(asdf, qwer) */
+// 자음만 써도 뜻이 있는 인사·대답 — 인사는 RAG 규칙(rules.py _GREETINGS)이 '인사'로 받음
+const JAMO_OK = /^(ㅎㅇ|ㅎ2|ㅂㅇ|ㅂ2|ㅇㅇ|ㅇㅋ|ㄱㅅ|ㄳ|ㄱㅅㄱㅅ|ㅇㅎ|ㅎㅇㅎㅇ)$/;
+
 export function isMeaningless(text: string): boolean {
 	const t = String(text ?? '').trim();
 	if (!t) return true;
+	if (JAMO_OK.test(t.replace(/[\s!?.~ㅋ]+/g, ''))) return false;
 	const hangul = (t.match(/[가-힣]/g) ?? []).length;
 	const words = t.match(/[a-z]{2,}/gi) ?? [];
 	if (!hangul && !words.length) return true; // 자음·모음, 기호, 숫자만

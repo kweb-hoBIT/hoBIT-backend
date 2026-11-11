@@ -290,3 +290,13 @@ describe('경고·정지 단계', () => {
 		expect(formatRemaining(60 * MIN).en).toBe('1 h');
 	});
 });
+
+describe('자음 인사는 뜻 없는 입력이 아님', () => {
+	test('ㅎㅇ·ㅂㅇ는 통과, ㅁㄴㅇㄹ은 막음', () => {
+		const { isMeaningless } = require('../../src/middleware/abuse');
+		expect(isMeaningless('ㅎㅇ')).toBe(false);
+		expect(isMeaningless('ㅎㅇ!')).toBe(false);
+		expect(isMeaningless('ㅂㅇ')).toBe(false);
+		expect(isMeaningless('ㅁㄴㅇㄹ')).toBe(true);
+	});
+});

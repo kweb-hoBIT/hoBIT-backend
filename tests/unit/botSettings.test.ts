@@ -56,7 +56,7 @@ describe('설정 읽기', () => {
 
 	test('RAG로 보내는 값', () => {
 		expect(ragBotOptions(DEFAULT_BOT_SETTINGS)).toEqual({
-			temperature: 0.3, max_tokens: 2000, place_enabled: true, place_radius_m: 1200, place_size: 8, menu_enabled: true,
+			temperature: 0.3, max_tokens: 2000, place_enabled: true, place_radius_m: 1200, place_size: 8, menu_enabled: true, rec_count: 3, rec_breadth: 0.5,
 		});
 	});
 

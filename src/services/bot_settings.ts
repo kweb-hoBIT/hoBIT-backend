@@ -9,6 +9,9 @@ export type BotSettings = {
 	// 답변
 	temperature: number; // 답변 자유도 — 낮을수록 근거 그대로, 높을수록 표현이 자유로움
 	maxTokens: number; // 최대 답변 길이 (토큰)
+	// 답변 아래 '이어서 물어볼 만한 질문'
+	recCount: number; // 칩 수 (0 = 안 보임)
+	recBreadth: number; // 자유도 — 0: 이번 질문과 확실히 이어지는 것만, 1: 조금 먼 주제까지
 	// 주변 장소 (카카오맵)
 	placeEnabled: boolean;
 	placeRadiusM: number;
@@ -42,6 +45,8 @@ type BoolKey = { [K in keyof BotSettings]: BotSettings[K] extends boolean ? K : 
 export const DEFAULT_BOT_SETTINGS: BotSettings = {
 	temperature: 0.3,
 	maxTokens: 2000,
+	recCount: 3,
+	recBreadth: 0.5,
 	placeEnabled: true,
 	placeRadiusM: 1200,
 	placeSize: 8,
@@ -68,6 +73,8 @@ export const DEFAULT_BOT_SETTINGS: BotSettings = {
 export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step: number }> = {
 	temperature: { min: 0, max: 1, step: 0.1 },
 	maxTokens: { min: 300, max: 3000, step: 100 },
+	recCount: { min: 0, max: 5, step: 1 },
+	recBreadth: { min: 0, max: 1, step: 0.1 },
 	mascotIdleSec: { min: 10, max: 600, step: 5 },
 	placeRadiusM: { min: 300, max: 3000, step: 100 },
 	placeSize: { min: 3, max: 15, step: 1 }, // 카카오 검색 한 번에 최대 15개
@@ -179,4 +186,6 @@ export const ragBotOptions = (s: BotSettings) => ({
 	place_radius_m: s.placeRadiusM,
 	place_size: s.placeSize,
 	menu_enabled: s.menuEnabled,
+	rec_count: s.recCount,
+	rec_breadth: s.recBreadth,
 });
