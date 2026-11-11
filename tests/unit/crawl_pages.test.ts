@@ -42,3 +42,18 @@ describe('정기 수집 일정·대상', () => {
 		expect(parseCrawlConfig(null)).toMatchObject({ pages: [], schedule: DEFAULT_CRAWL_SCHEDULE });
 	});
 });
+
+describe('챗봇 켜기·끄기 개발자 키', () => {
+	const { checkPowerKey } = require('../../src/services/bot_power');
+	test('서버에 키가 없으면 no_key, 틀리면 bad_key', () => {
+		const prev = process.env['BOT_POWER_KEY'];
+		delete process.env['BOT_POWER_KEY'];
+		expect(checkPowerKey('x')).toBe('no_key');
+		process.env['BOT_POWER_KEY'] = 's3cret';
+		expect(checkPowerKey('s3cret')).toBe('ok');
+		expect(checkPowerKey('s3cre')).toBe('bad_key');
+		expect(checkPowerKey(undefined)).toBe('bad_key');
+		if (prev === undefined) delete process.env['BOT_POWER_KEY'];
+		else process.env['BOT_POWER_KEY'] = prev;
+	});
+});

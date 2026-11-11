@@ -9,6 +9,7 @@ import { NotFoundError } from '../types';
 import { logApi } from '../middleware/log';
 import { swaggerSpec } from '../../swaggerConfig';
 import { createChat } from '../chat';
+import { BOT_OFF_MESSAGE, botEnabled } from '../services/bot_power';
 
 const PORT = Number(process.env['PORT'] ?? 4000); // release와 함께 띄울 때 .env에서 PORT 지정
 const API_V0 = '/api/v0';
@@ -55,8 +56,11 @@ export async function runServer() {
 		res.send({ status: 'State' });
 	});
 
-	app.get('/health', (_req, res) => {
-		res.status(200).json({ status: 'ok' });
+	// 서버가 살아 있는지는 늘 200 (배포 스크립트가 봄) — 챗봇을 꺼 두었는지는 botEnabled로 (학생 화면이 오류 화면을 띄움)
+	app.get('/health', async (_req, res) => {
+		const on = await botEnabled();
+		res.set('Cache-Control', 'no-store');
+		res.status(200).json({ status: 'ok', botEnabled: on, ...(on ? {} : { message: BOT_OFF_MESSAGE }) });
 	});
 
 	// API 문서는 개발용 — 배포(NODE_ENV=production, 베타 포함)에서는 SWAGGER_ENABLED=1일 때만

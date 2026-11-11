@@ -11,6 +11,7 @@ import { STUDENT_TOKEN_TTL_SEC } from './tokens';
 import { BOT_SETTING_LIMITS, DEFAULT_BOT_SETTINGS, refreshBotSettings, SUSPEND_MINUTES_LIMIT } from '../services/bot_settings';
 import { BOARDS_HOURS_OPTIONS, checkCrawlUrl, crawlTickAt, DEFAULT_CRAWL_SCHEDULE, DEFAULT_CRAWL_SOURCES, markCrawlTick, MAX_CRAWL_PAGES, QUICK_MIN_OPTIONS } from '../services/crawl_pages';
 import axios from 'axios';
+import { checkPowerKey, powerKeyConfigured, setBotPower } from '../services/bot_power';
 import { envs } from '../envs';
 
 /**
@@ -25,6 +26,8 @@ const bearer = (req: Request) => {
 };
 
 const ERROR_TEXT: Record<string, string> = {
+	no_key: '서버에 개발자 키(BOT_POWER_KEY)가 설정되어 있지 않아 바꿀 수 없어요.',
+	bad_key: '개발자 키가 맞지 않아요.',
 	invalid_url: '주소를 다시 확인해 주세요 (https://로 시작하는 주소).',
 	not_school: '학교 사이트(korea.ac.kr)의 페이지만 더할 수 있어요.',
 	already_crawled: '정보대학 홈페이지는 이미 전부 수집하고 있어요.',
@@ -378,6 +381,17 @@ export function chatRouter(service: ChatService, realtime: ChatRealtime) {
 	route.put('/agent/bot-settings', express.json({ limit: '8kb' }), agent, staffOnly, async (req, res) => {
 		const saved = await service.setBotSettings(req.body?.settings, agentOf(req).name);
 		return saved ? res.json(botPayload(saved)) : fail(res, 400, 'invalid');
+	});
+	// 챗봇 켜기·끄기 — 보기는 담당자 누구나, 바꾸기는 행정실·개발자 계정 + 개발자 키(서버 .env BOT_POWER_KEY)
+	route.get('/agent/bot-power', agent, async (_req, res) => res.json({ ok: true, ...(await service.getBotPower()), keyConfigured: powerKeyConfigured() }));
+	route.put('/agent/bot-power', express.json({ limit: '2kb' }), agent, staffOnly, async (req, res) => {
+		if (typeof req.body?.enabled !== 'boolean') return fail(res, 400, 'invalid');
+		const k = checkPowerKey(req.body?.key);
+		if (k !== 'ok') return fail(res, k === 'no_key' ? 409 : 403, k);
+		const saved = await service.setBotPower(req.body.enabled, agentOf(req).name);
+		setBotPower(saved.enabled); // 이 서버에 바로 반영
+		console.log(`[bot-power] ${saved.enabled ? '켬' : '끔'} — ${agentOf(req).name}`);
+		return res.json({ ok: true, ...saved, keyConfigured: true });
 	});
 	// 정기 수집 — 시간표·최근 결과(RAG가 읽음)·추가한 페이지. 보기는 담당자 누구나, 바꾸기는 행정실·개발자만
 	const RAG = envs.RAG_SERVER_URL ?? 'http://localhost:8000';

@@ -11,6 +11,7 @@ import { chatRouter } from './routes';
 import type { LlmCheck } from './moderation';
 import { createTranslator, Translator } from './translate';
 import { refreshBotSettings, registerBotSettingsLoader } from '../services/bot_settings';
+import { registerBotPowerLoader } from '../services/bot_power';
 
 /**
  * 실시간 채팅 붙이기: const chat = await createChat(httpServer); app.use('/api/v0/chat', chat.router)
@@ -37,6 +38,7 @@ export async function createChat(
 	const router = chatRouter(service, realtime);
 	// 챗봇 설정은 채팅 DB에 저장 — 채팅 DB가 없으면 기본값으로 계속 답함
 	registerBotSettingsLoader(() => service.loadBotSettingsRaw());
+	registerBotPowerLoader(async () => (await service.getBotPower()).enabled);
 	refreshBotSettings().catch(() => undefined);
 
 	// 보관 기간 정리 — 시작할 때 한 번, 이후 하루마다

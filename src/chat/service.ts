@@ -237,6 +237,25 @@ export class ChatService {
 		return this.getBotSettings();
 	}
 
+	// ── 챗봇 켜기·끄기 (services/bot_power.ts) ─────────────────────
+	async getBotPower(): Promise<{ enabled: boolean; updatedAt: string | null; updatedBy: string | null }> {
+		const [rows] = await this.pool.query<Row[]>(`SELECT value, updated_at FROM chat_settings WHERE name = 'power'`);
+		const raw = json(rows[0]?.['value']) as Record<string, unknown> | null;
+		const at = rows[0]?.['updated_at'];
+		return {
+			enabled: raw?.['enabled'] !== false,
+			updatedAt: at ? new Date(at as string).toISOString() : null,
+			updatedBy: typeof raw?.['updatedBy'] === 'string' ? (raw['updatedBy'] as string) : null,
+		};
+	}
+
+	async setBotPower(enabled: boolean, by: string) {
+		await this.pool.query(`INSERT INTO chat_settings (name, value) VALUES ('power', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)`, [
+			JSON.stringify({ enabled, updatedBy: by.slice(0, 45) }),
+		]);
+		return this.getBotPower();
+	}
+
 	// ── 정기 수집에 더한 페이지 (services/crawl_pages.ts) ─────────────
 	async getCrawlConfig(): Promise<CrawlConfig & { updatedAt: string | null; updatedBy: string | null }> {
 		const [rows] = await this.pool.query<Row[]>(`SELECT value, updated_at FROM chat_settings WHERE name = 'crawl'`);
