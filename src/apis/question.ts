@@ -31,7 +31,8 @@ const SOURCE_SCORE_THRESHOLD = 0.01;  // RRF 점수 기준 (최대 ~0.033), 이�
 const SOURCE_RELATIVE_RATIO = 0.7;
 
 // 검색 전에 물어야 하는(답변을 막는) 프로필 필드 — 교육과정표처럼 학과·학번별로 문서가 갈리는 경우
-const BLOCKING_PROFILE_FIELDS = ['department', 'admission_year'];
+// grade: 과목 추천·수강 계획 질문만 (RAG _rule_required_profile) — 학번으로 학년을 추정하지 않고 학생에게 물음
+const BLOCKING_PROFILE_FIELDS = ['department', 'admission_year', 'grade'];
 
 const makeFlags = (override: Partial<QuestionResponse> = {}) => ({
 	is_greet: false,
