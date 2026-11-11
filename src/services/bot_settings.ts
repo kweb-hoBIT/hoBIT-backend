@@ -19,6 +19,10 @@ export type BotSettings = {
 	blockFarPlace: boolean; // 학교 밖 다른 지역·내 위치 주변 장소 질문 막기
 	// 학식
 	menuEnabled: boolean;
+	// 웹 검색 — 학교 자료에서 못 찾았을 때만 (OpenAI web_search, 1,000번에 약 $10)
+	webSearchEnabled: boolean;
+	webSearchWide: boolean; // true: 웹 전체(유튜브·블로그 포함), false: 학교 사이트(korea.ac.kr)만
+	webSearchDaily: number; // 하루 최대 검색 수 (0 = 안 함)
 	// 대학원 — 끄면 학부 기준으로만 답함 (학생 화면의 학부/대학원 스위치도 숨김)
 	gradEnabled: boolean;
 	// 호빗 캐릭터 (학생 화면 시작 화면) — 움직이기 켜기·끄기, 가만히 두면 졸기까지 시간
@@ -52,6 +56,9 @@ export const DEFAULT_BOT_SETTINGS: BotSettings = {
 	placeSize: 8,
 	blockFarPlace: true,
 	menuEnabled: true,
+	webSearchEnabled: false,
+	webSearchWide: true,
+	webSearchDaily: 300,
 	gradEnabled: true,
 	mascotEnabled: true,
 	mascotIdleSec: 30,
@@ -77,7 +84,8 @@ export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step
 	recBreadth: { min: 0, max: 1, step: 0.1 },
 	mascotIdleSec: { min: 10, max: 600, step: 5 },
 	placeRadiusM: { min: 300, max: 3000, step: 100 },
-	placeSize: { min: 3, max: 15, step: 1 }, // 카카오 검색 한 번에 최대 15개
+	placeSize: { min: 3, max: 15, step: 1 },
+	webSearchDaily: { min: 0, max: 3000, step: 10 }, // 카카오 검색 한 번에 최대 15개
 	sessionPerMin: { min: 3, max: 100, step: 1 },
 	sessionPerDay: { min: 20, max: 3000, step: 10 },
 	ipPerMin: { min: 10, max: 1000, step: 10 }, // 학교 와이파이는 여러 학생이 IP 하나를 같이 씀
@@ -92,7 +100,7 @@ export const BOT_SETTING_LIMITS: Record<NumKey, { min: number; max: number; step
 export const SUSPEND_MINUTES_LIMIT = { min: 1, max: 10_080, step: 1 }; // 최대 7일
 
 const NUM_KEYS = Object.keys(BOT_SETTING_LIMITS) as NumKey[];
-const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'gradEnabled', 'mascotEnabled', 'blockPersonalUse'];
+const BOOL_KEYS: BoolKey[] = ['placeEnabled', 'blockFarPlace', 'menuEnabled', 'webSearchEnabled', 'webSearchWide', 'gradEnabled', 'mascotEnabled', 'blockPersonalUse'];
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const roundStep = (v: number, step: number) => (step < 1 ? Math.round(v * 100) / 100 : Math.round(v));
@@ -187,5 +195,8 @@ export const ragBotOptions = (s: BotSettings) => ({
 	place_size: s.placeSize,
 	menu_enabled: s.menuEnabled,
 	rec_count: s.recCount,
+	web_search: s.webSearchEnabled,
+	web_search_wide: s.webSearchWide,
+	web_search_daily: s.webSearchDaily,
 	rec_breadth: s.recBreadth,
 });

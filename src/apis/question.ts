@@ -615,6 +615,7 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 		audience: ragData.audience === 'graduate' ? 'graduate' : 'undergraduate',
 		audience_by: ragData.audience_by ?? 'default',
 		not_found: isNoSourceFallback || undefined, // 자료에서 답을 못 찾음 → 화면에서 우는 호빗
+		web_searched: ragData.web_searched || undefined, // 못 찾아서 웹 검색 결과를 붙임 → 우는 호빗 대신 그대로
 		id: -1,
 	} as QuestionResponse;
 }
