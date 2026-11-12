@@ -185,13 +185,13 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 	const llmResponseRaw: string = ragData.response || '';
 	const citationMatches = llmResponseRaw.match(/\[\s*S?\s*(\d{1,2})\s*\]/g) ?? [];
 	// 답변에 실제로 쓰인 근거만 출처로 — 답변 속 [S#] 태그 + RAG가 판단한 cited_ids(태그가 없을 때 내용 겹침 기준)
-	const citedSourceIds = new Set<string>([
-		...citationMatches
+	const taggedSourceIds = new Set<string>(
+		citationMatches
 			.map((token: string) => token.match(/\[\s*S?\s*(\d{1,2})\s*\]/)?.[1])
 			.filter((id): id is string => Boolean(id))
-			.map((id) => `S${id}`),
-		...((ragData.cited_ids ?? []) as string[]),
-	]);
+			.map((id) => `S${id}`)
+	);
+	const citedSourceIds = new Set<string>([...taggedSourceIds, ...((ragData.cited_ids ?? []) as string[])]);
 	const llmResponse = llmResponseRaw
 		.replace(/\s*\[\s*[SM]?\s*\d{1,2}\s*\]/g, '')  // LLM이 가끔 [ S1]·[4]처럼 씀
 		.trim()
@@ -509,10 +509,12 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 		(max: number, source: SourcePayload) => Math.max(max, source.score),
 		0
 	);
+	// 답변이 [S#]로 직접 단 근거는 점수와 상관없이 남김 — 문의처만 쓴 FAQ 점수가 더 높아 정작 날짜를 쓴 공지가 빠지던 일
+	// (2026-11-12 '이번 학기 수강신청은 언제 시작해?' → 출처에 FAQ만)
 	const filteredByScore = citedSources.filter(
 		(source: SourcePayload) =>
-			source.score >= SOURCE_SCORE_THRESHOLD &&
-			source.score >= topCitedScore * SOURCE_RELATIVE_RATIO
+			taggedSourceIds.has(source.source_id) ||
+			(source.score >= SOURCE_SCORE_THRESHOLD && source.score >= topCitedScore * SOURCE_RELATIVE_RATIO)
 	);
 
 	// 같은 공지를 다시 올린 글(첨부파일 이름이 대부분 같음)은 출처에 한 번만 — 색인 단계(link_docs)에서 놓친 경우 대비
