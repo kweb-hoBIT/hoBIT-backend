@@ -30,10 +30,12 @@ main() {
   fi
   restart
   if health "$URL"; then
-    # 챗봇 답변에 영향을 주는 저장소면 시나리오 테스트를 뒤에서 돌림 (배포는 기다리지 않음, 실패하면 알림 메일)
-    case "$REPO" in
-      hoBIT-backend|hoBIT-rag) setsid nohup bash "$K/beta.sh" test-after-deploy >/dev/null 2>&1 < /dev/null & ;;
-    esac
+    # 배포 후 시나리오 테스트는 잠시 멈춤 (2026-11-12) — 질문 42개마다 LLM을 불러 자주 배포하면 비용이 쌓임.
+    # 필요할 때 직접: bash ~/hobit-renewal/hoBIT-backend/deploy/beta/beta.sh test
+    # 다시 켜려면 아래 주석을 풀면 됨
+    # case "$REPO" in
+    #   hoBIT-backend|hoBIT-rag) setsid nohup bash "$K/beta.sh" test-after-deploy >/dev/null 2>&1 < /dev/null & ;;
+    # esac
     return 0
   fi
 
