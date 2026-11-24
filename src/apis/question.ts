@@ -592,11 +592,12 @@ function buildRagResponse(ragData: any, question: string, correctedQuestion: str
 	);
 
 	// /classify의 corrected_query는 항상 한국어로 번역됨 (RAG index 일관성 위해).
-	// → question_ko는 한국어 corrected, question_en은 사용자 원본 (영어로 입력했으면 영어 그대로 표시)
+	// 카드 제목은 학생이 쓴 질문 그대로 — 한국어로 물었으면 원문 (검색용으로 고친 질문은 '정운오IT교양관…'처럼 학생 질문과 달라 보였음, 2026-11-24)
+	// 영어로 물었으면 question_en은 원문, question_ko는 한국어로 옮긴 질문
 	const llmFaq = {
 		id: -1,
 		related_notices: (ragData.related_notices ?? []) as RelatedNotice[],  // 출처 옆 '관련 공지' 카드
-		question_ko: correctedQuestion,                          // 항상 한국어 (corrected)
+		question_ko: language === 'EN' ? correctedQuestion : question,
 		question_en: language === 'EN' ? question : correctedQuestion,  // 영어 입력이면 원본, 아니면 한국어
 		answer_ko: answerJson,
 		answer_en: answerJson,
